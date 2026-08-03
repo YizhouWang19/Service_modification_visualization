@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>California Passenger Rail Daily Weekday Round Trips</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+
+  <style>
+    :root {
+      --panel-w: 410px;
+      --bg: #f6f3ec;
+      --panel: rgba(255, 252, 244, 0.92);
+      --text: #151515;
+      --muted: #6b665c;
+      --line: rgba(0, 0, 0, 0.14);
+      --green: #005f3b;
+      --blue: #003f88;
+      --gold: #f0b323;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    .panel {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      bottom: 24px;
+      z-index: 10;
+      width: var(--panel-w);
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 24px 70px rgba(0,0,0,.16);
+      overflow: auto;
+    }
+
+    .eyebrow {
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.04;
+      letter-spacing: -.045em;
+      font-weight: 780;
+    }
+
+    .subtitle {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.48;
+    }
+
+    .legend {
+      display: grid;
+      gap: 9px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #27231c;
+      font-size: 13px;
+    }
+
+    .swatch {
+      width: 34px;
+      height: 5px;
+      border-radius: 999px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .metric {
+      padding: 11px;
+      border-radius: 15px;
+      background: rgba(0,0,0,.045);
+      border: 1px solid rgba(0,0,0,.06);
+    }
+
+    .metric-value {
+      font-size: 22px;
+      font-weight: 780;
+      letter-spacing: -.04em;
+    }
+
+    .metric-label {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .section-title {
+      margin-top: 22px;
+      margin-bottom: 9px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    #dateLabel {
+      font-size: 28px;
+      font-weight: 780;
+      letter-spacing: -.045em;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      appearance: none;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #151515, #9a948a);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 21px;
+      height: 21px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      background: #111;
+      box-shadow: 0 0 0 5px rgba(0,0,0,.12);
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 21px;
+      height: 21px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      background: #111;
+      box-shadow: 0 0 0 5px rgba(0,0,0,.12);
+      cursor: pointer;
+    }
+
+    .ticks {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      margin-top: 16px;
+      font-size: 13px;
+      color: #2b261f;
+    }
+
+    .switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+
+    .switch input { display: none; }
+
+    .slider-round {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #c9c2b8;
+      border-radius: 999px;
+      transition: .2s;
+    }
+
+    .slider-round:before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: white;
+      transition: .2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    }
+
+    .switch input:checked + .slider-round { background: #151515; }
+    .switch input:checked + .slider-round:before { transform: translateX(20px); }
+
+    select {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,255,.72);
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+
+    #chart {
+      width: 100%;
+      height: 150px;
+      margin-top: 10px;
+      border-radius: 16px;
+      background: rgba(0,0,0,.035);
+      border: 1px solid rgba(0,0,0,.06);
+    }
+
+    .chart-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin-top: 8px;
+    }
+
+    .maplibregl-popup-content {
+      background: rgba(255, 252, 244, .96);
+      color: var(--text);
+      border: 1px solid rgba(0,0,0,.16);
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.22);
+      backdrop-filter: blur(10px);
+    }
+
+    .popup-title {
+      font-size: 14px;
+      font-weight: 760;
+      margin-bottom: 5px;
+    }
+
+    .popup-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .popup-number {
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 780;
+      letter-spacing: -.04em;
+    }
+
+    .popup-number span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .map-note {
+      position: absolute;
+      right: 28px;
+      bottom: 22px;
+      z-index: 9;
+      color: rgba(0,0,0,.45);
+      font-size: 11px;
+      pointer-events: none;
+      text-align: right;
+    }
+
+    @media (max-width: 780px) {
+      .panel {
+        width: calc(100vw - 32px);
+        left: 16px;
+        right: 16px;
+        top: 16px;
+        bottom: 16px;
+      }
+      h1 { font-size: 24px; }
+      .map-note { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <aside class="panel">
+    <div class="eyebrow">California Passenger Rail</div>
+    <h1>Daily weekday service timeline</h1>
+    <div class="subtitle">
+      Semi-annual check-ins from 2020 to 2026. Line width shows segment-level service; the system total counts each route only once.
+    </div>
+
+    <div class="legend">
+      <div class="legend-row"><span class="swatch" style="background:#005f3b"></span>Capitol Corridor</div>
+      <div class="legend-row"><span class="swatch" style="background:#f0b323"></span>Gold Runner</div>
+      <div class="legend-row"><span class="swatch" style="background:#003f88"></span>Pacific Surfliner</div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-value" id="metricSegments">—</div>
+        <div class="metric-label">active segments</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="metricTotal">—</div>
+        <div class="metric-label">system route-total RT</div>
+      </div>
+    </div>
+
+    <div class="section-title">Time</div>
+    <div id="dateLabel">Loading…</div>
+    <input id="timeSlider" type="range" min="0" max="0" step="1" value="0" />
+    <div class="ticks" id="ticks"><span>Start</span><span>End</span></div>
+
+    <div class="toggle-row">
+      <span>Show RT labels on the map</span>
+      <label class="switch">
+        <input id="labelToggle" type="checkbox" />
+        <span class="slider-round"></span>
+      </label>
+    </div>
+
+    <div class="section-title">Trend chart</div>
+    <select id="chartMode">
+      <option value="segment">Segment</option>
+      <option value="route">Route</option>
+    </select>
+    <div style="height:8px"></div>
+    <select id="chartSelect"></select>
+    <svg id="chart" viewBox="0 0 390 150" preserveAspectRatio="none"></svg>
+    <div class="chart-note" id="chartNote">
+      Select a segment or route to compare daily weekday round trips over time.
+    </div>
+  </aside>
+
+  <div class="map-note">
+    MapLibre GL JS · Segment widths and route totals are stored in the GeoJSON
+  </div>
+
+  <script>
+    const RAIL_DATA_URL = "data/passenger_rail_timeline.geojson";
+    const CA_BOUNDARY_URL = "data/ca_state.geojson";
+
+    const FIELD = {
+      route: "route",
+      segment: "segment",
+      date: "date",
+      roundtrip: "roundtrip",
+      routeTotal: "route_total_rt"
+    };
+
+    const colors = {
+      "Capitol Corridor": "#005f3b",
+      "Pacific Surfliner": "#003f88",
+      "Gold Runner": "#f0b323",
+      "San Joaquins": "#f0b323"
+    };
+
+    const routeColorExpression = [
+      "match", ["get", FIELD.route],
+      "Capitol Corridor", colors["Capitol Corridor"],
+      "Pacific Surfliner", colors["Pacific Surfliner"],
+      "Gold Runner", colors["Gold Runner"],
+      "San Joaquins", colors["Gold Runner"],
+      "#7b7b7b"
+    ];
+
+    const style = {
+      version: 8,
+      sources: {
+        base: {
+          type: "raster",
+          tiles: [
+            "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+            "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+            "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
+          ],
+          tileSize: 256,
+          attribution: "© OpenStreetMap contributors © CARTO"
+        },
+        labels: {
+          type: "raster",
+          tiles: [
+            "https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
+            "https://b.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
+            "https://c.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png"
+          ],
+          tileSize: 256
+        }
+      },
+      layers: [
+        { id: "base", type: "raster", source: "base", paint: { "raster-opacity": 0.55, "raster-saturation": -0.9 } },
+        { id: "labels", type: "raster", source: "labels", paint: { "raster-opacity": 0.42 } }
+      ]
+    };
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style,
+      center: [-119.45, 37.15],
+      zoom: 5.15,
+      pitch: 0,
+      bearing: 0,
+      dragPan: true,
+      scrollZoom: true,
+      doubleClickZoom: true,
+      touchZoomRotate: true,
+      keyboard: true,
+      boxZoom: true,
+      interactive: true
+    });
+
+    map.dragPan.enable();
+    map.scrollZoom.enable();
+    map.doubleClickZoom.enable();
+    map.touchZoomRotate.enable();
+    map.keyboard.enable();
+
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), "bottom-right");
+
+    let allData = null;
+    let dates = [];
+    let currentDate = null;
+    let railLayersAdded = false;
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+
+    function normalizeDate(value) {
+      if (!value) return null;
+      if (typeof value === "string") {
+        const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+        if (match) return match[0];
+        const d = new Date(value);
+        if (!isNaN(d)) return d.toISOString().slice(0, 10);
+      }
+      if (typeof value === "number") {
+        const d = new Date(value);
+        if (!isNaN(d)) return d.toISOString().slice(0, 10);
+      }
+      return String(value).slice(0, 10);
+    }
+
+    function formatDate(dateString) {
+      const d = new Date(dateString + "T00:00:00");
+      return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+
+    function cleanRoute(route) {
+      if (route === "San Joaquins") return "Gold Runner";
+      return route || "Unknown route";
+    }
+
+    function preprocessData(data) {
+      data.features = data.features
+        .filter(f => f && f.geometry && f.properties)
+        .map(f => {
+          const p = f.properties;
+          p[FIELD.route] = cleanRoute(p[FIELD.route]);
+          p[FIELD.date] = normalizeDate(p[FIELD.date]);
+          p[FIELD.roundtrip] = Number(p[FIELD.roundtrip] ?? 0);
+          p[FIELD.routeTotal] = Number(p[FIELD.routeTotal] ?? 0);
+          return f;
+        })
+        .filter(f => f.properties[FIELD.date]);
+      return data;
+    }
+
+    function makeMaskFromCalifornia(caGeojson) {
+      const world = [[[-180,-90],[180,-90],[180,90],[-180,90],[-180,-90]]];
+      let holes = [];
+
+      caGeojson.features.forEach(f => {
+        const geom = f.geometry;
+        if (!geom) return;
+        if (geom.type === "Polygon") {
+          holes.push(...geom.coordinates.map(ring => ring.slice().reverse()));
+        } else if (geom.type === "MultiPolygon") {
+          geom.coordinates.forEach(poly => holes.push(...poly.map(ring => ring.slice().reverse())));
+        }
+      });
+
+      return {
+        type: "FeatureCollection",
+        features: [{
+          type: "Feature",
+          properties: {},
+          geometry: { type: "Polygon", coordinates: world.concat(holes) }
+        }]
+      };
+    }
+
+    async function addCaliforniaMask() {
+      try {
+        const res = await fetch(CA_BOUNDARY_URL + "?v=" + Date.now());
+        if (!res.ok) return;
+        const ca = await res.json();
+        const mask = makeMaskFromCalifornia(ca);
+
+        map.addSource("ca-boundary", { type: "geojson", data: ca });
+        map.addSource("outside-ca-mask", { type: "geojson", data: mask });
+
+        map.addLayer({
+          id: "outside-ca-mask",
+          type: "fill",
+          source: "outside-ca-mask",
+          paint: { "fill-color": "#f6f3ec", "fill-opacity": 0.62 }
+        });
+
+        map.addLayer({
+          id: "ca-boundary-line",
+          type: "line",
+          source: "ca-boundary",
+          paint: { "line-color": "rgba(40,40,40,0.42)", "line-width": 1.2 }
+        });
+      } catch (err) {
+        console.warn("CA boundary not loaded.", err);
+      }
+    }
+
+    function getCoordsArray(geometry) {
+      if (!geometry) return [];
+      if (geometry.type === "LineString") return [geometry.coordinates];
+      if (geometry.type === "MultiLineString") return geometry.coordinates;
+      return [];
+    }
+
+    function midpointOfLongestLine(geometry) {
+      const lines = getCoordsArray(geometry);
+      if (!lines.length) return null;
+
+      let longest = lines[0];
+      for (const line of lines) {
+        if (line.length > longest.length) longest = line;
+      }
+
+      if (!longest.length) return null;
+      const mid = Math.floor(longest.length / 2);
+      return longest[mid];
+    }
+
+    function makeLabelData(lineData) {
+      return {
+        type: "FeatureCollection",
+        features: lineData.features.map(f => {
+          const coord = midpointOfLongestLine(f.geometry);
+          if (!coord) return null;
+          return {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: coord },
+            properties: { ...f.properties }
+          };
+        }).filter(Boolean)
+      };
+    }
+
+    function filteredData(dateString) {
+      return {
+        type: "FeatureCollection",
+        features: allData.features.filter(f =>
+          f.properties[FIELD.date] === dateString &&
+          Number(f.properties[FIELD.roundtrip]) > 0
+        )
+      };
+    }
+
+    function routeTotalsForDate(dateString) {
+      const totalsByRoute = new Map();
+      allData.features
+        .filter(f => f.properties[FIELD.date] === dateString)
+        .forEach(f => {
+          const p = f.properties;
+          if (!totalsByRoute.has(p[FIELD.route])) {
+            totalsByRoute.set(p[FIELD.route], Number(p[FIELD.routeTotal] || 0));
+          }
+        });
+      return totalsByRoute;
+    }
+
+    function updateMetrics(data) {
+      const routeTotals = routeTotalsForDate(currentDate);
+      const total = [...routeTotals.values()].reduce((sum, value) => sum + value, 0);
+      document.getElementById("metricSegments").textContent = data.features.length;
+      document.getElementById("metricTotal").textContent = total;
+    }
+
+    function updateDate(index) {
+      currentDate = dates[index];
+      const data = filteredData(currentDate);
+      const labelData = makeLabelData(data);
+
+      document.getElementById("dateLabel").textContent = formatDate(currentDate);
+
+      if (map.getSource("rail")) map.getSource("rail").setData(data);
+      if (map.getSource("rt-label-points")) map.getSource("rt-label-points").setData(labelData);
+
+      updateMetrics(data);
+      drawChart();
+    }
+
+    function addRailLayer() {
+      if (railLayersAdded) return;
+      const initial = filteredData(currentDate);
+      const initialLabels = makeLabelData(initial);
+
+      map.addSource("rail", { type: "geojson", data: initial });
+      map.addSource("rt-label-points", { type: "geojson", data: initialLabels });
+
+      map.addLayer({
+        id: "rail-lines",
+        type: "line",
+        source: "rail",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: {
+          "line-color": routeColorExpression,
+          "line-opacity": 0.98,
+          "line-width": [
+            "interpolate", ["linear"], ["to-number", ["get", FIELD.roundtrip]],
+            1, 1.8,
+            5, 4.2,
+            10, 6.8,
+            15, 9.5
+          ]
+        }
+      });
+
+      map.addLayer({
+        id: "rt-labels",
+        type: "symbol",
+        source: "rt-label-points",
+        layout: {
+          "text-field": ["concat", ["to-string", ["get", FIELD.roundtrip]], " RT"],
+          "text-size": 12,
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-anchor": "center",
+          "text-offset": [0, -0.9],
+          "text-allow-overlap": false,
+          "text-ignore-placement": false,
+          "text-padding": 10,
+          "visibility": "none"
+        },
+        paint: {
+          "text-color": "#111111",
+          "text-halo-color": "#fffaf0",
+          "text-halo-width": 1.8
+        }
+      });
+
+      map.addLayer({
+        id: "rail-hit",
+        type: "line",
+        source: "rail",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#ffffff", "line-opacity": 0, "line-width": 22 }
+      });
+
+      map.on("mousemove", "rail-hit", (e) => {
+        map.getCanvas().style.cursor = "pointer";
+        const f = e.features[0];
+        const p = f.properties;
+        popup
+          .setLngLat(e.lngLat)
+          .setHTML(`
+            <div class="popup-title">${p[FIELD.segment]}</div>
+            <div class="popup-meta">${p[FIELD.route]} · ${formatDate(p[FIELD.date])}</div>
+            <div class="popup-number">${p[FIELD.roundtrip]} <span>segment RT</span></div>
+            <div class="popup-meta">Route total: ${p[FIELD.routeTotal]} RT · ${p.review_status || "Unreviewed"}</div>
+          `)
+          .addTo(map);
+      });
+
+      map.on("mouseleave", "rail-hit", () => {
+        map.getCanvas().style.cursor = "";
+        popup.remove();
+      });
+
+      railLayersAdded = true;
+      updateMetrics(initial);
+    }
+
+    function uniqueSorted(field) {
+      return [...new Set(allData.features.map(f => f.properties[field]).filter(Boolean))].sort();
+    }
+
+    function setupChartControls() {
+      const mode = document.getElementById("chartMode");
+      const select = document.getElementById("chartSelect");
+
+      function refreshOptions() {
+        const field = mode.value === "route" ? FIELD.route : FIELD.segment;
+        const values = uniqueSorted(field);
+        select.innerHTML = values.map(v => `<option value="${v}">${v}</option>`).join("");
+        drawChart();
+      }
+
+      mode.addEventListener("change", refreshOptions);
+      select.addEventListener("change", drawChart);
+      refreshOptions();
+    }
+
+    function seriesForSelection() {
+      const mode = document.getElementById("chartMode").value;
+      const value = document.getElementById("chartSelect").value;
+      const field = mode === "route" ? FIELD.route : FIELD.segment;
+
+      return dates.map(date => {
+        const feats = allData.features.filter(
+          f => f.properties[FIELD.date] === date && f.properties[field] === value
+        );
+
+        let rt = 0;
+        if (mode === "route") {
+          rt = feats.length ? Number(feats[0].properties[FIELD.routeTotal] || 0) : 0;
+        } else {
+          rt = feats.reduce(
+            (sum, f) => sum + Number(f.properties[FIELD.roundtrip] || 0),
+            0
+          );
+        }
+        return { date, rt };
+      });
+    }
+
+    function drawChart() {
+      if (!allData || !dates.length) return;
+      const svg = document.getElementById("chart");
+      const series = seriesForSelection();
+      const maxY = Math.max(1, ...series.map(d => d.rt));
+      const w = 390, h = 150;
+      const pad = { l: 30, r: 12, t: 18, b: 28 };
+      const x = i => pad.l + (i / Math.max(1, series.length - 1)) * (w - pad.l - pad.r);
+      const y = v => h - pad.b - (v / maxY) * (h - pad.t - pad.b);
+      const currentIdx = dates.indexOf(currentDate);
+
+      const points = series.map((d, i) => `${x(i)},${y(d.rt)}`).join(" ");
+      const circles = series.map((d, i) => {
+        const active = i === currentIdx;
+        return `<circle cx="${x(i)}" cy="${y(d.rt)}" r="${active ? 4.5 : 2.8}" fill="${active ? "#111" : "#777"}" />`;
+      }).join("");
+
+      svg.innerHTML = `
+        <line x1="${pad.l}" y1="${h-pad.b}" x2="${w-pad.r}" y2="${h-pad.b}" stroke="rgba(0,0,0,.18)" />
+        <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${h-pad.b}" stroke="rgba(0,0,0,.18)" />
+        <text x="${pad.l}" y="13" font-size="10" fill="#6b665c">${maxY} RT</text>
+        <text x="${pad.l}" y="${h-8}" font-size="10" fill="#6b665c">${formatDate(dates[0])}</text>
+        <text x="${w-pad.r-46}" y="${h-8}" font-size="10" fill="#6b665c">${formatDate(dates[dates.length-1])}</text>
+        <polyline points="${points}" fill="none" stroke="#111" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+        ${circles}
+      `;
+
+      const value = document.getElementById("chartSelect").value;
+      const mode = document.getElementById("chartMode").value;
+      document.getElementById("chartNote").textContent =
+        mode === "route"
+          ? `${value}: route-total daily weekday round trips; overlapping segments are not added together.`
+          : `${value}: segment-level daily weekday round trips at each semi-annual check-in.`;
+    }
+
+    async function init() {
+      const res = await fetch(RAIL_DATA_URL + "?v=" + Date.now());
+      if (!res.ok) throw new Error(`Could not load ${RAIL_DATA_URL}`);
+      allData = preprocessData(await res.json());
+
+      dates = [...new Set(allData.features.map(f => f.properties[FIELD.date]))].sort();
+      if (!dates.length) throw new Error("GeoJSON loaded, but no valid date values were found.");
+
+      currentDate = dates[0];
+
+      const slider = document.getElementById("timeSlider");
+      slider.min = 0;
+      slider.max = dates.length - 1;
+      slider.value = 0;
+      slider.addEventListener("input", e => updateDate(Number(e.target.value)));
+
+      document.getElementById("dateLabel").textContent = formatDate(currentDate);
+      document.getElementById("ticks").innerHTML =
+        `<span>${formatDate(dates[0])}</span><span>${formatDate(dates[dates.length - 1])}</span>`;
+
+      document.getElementById("labelToggle").addEventListener("change", e => {
+        if (map.getLayer("rt-labels")) {
+          map.setLayoutProperty("rt-labels", "visibility", e.target.checked ? "visible" : "none");
+        }
+      });
+
+      setupChartControls();
+
+      if (map.loaded()) {
+        await addCaliforniaMask();
+        addRailLayer();
+      } else {
+        map.on("load", async () => {
+          await addCaliforniaMask();
+          addRailLayer();
+        });
+      }
+    }
+
+    init().catch(err => {
+      console.error(err);
+      document.getElementById("dateLabel").textContent = "Data not loaded";
+      document.getElementById("metricSegments").textContent = "—";
+      document.getElementById("metricTotal").textContent = "—";
+      document.getElementById("chartNote").textContent = err.message;
+    });
+  </script>
+</body>
+</html>
