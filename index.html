@@ -253,6 +253,28 @@
       margin-top: 8px;
     }
 
+    .status-message {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(0,0,0,.09);
+      border-radius: 12px;
+      background: rgba(255,255,255,.62);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .status-message.success {
+      display: none;
+    }
+
+    .status-message.error {
+      display: block;
+      color: #8b1e1e;
+      background: rgba(180, 35, 35, .08);
+      border-color: rgba(180, 35, 35, .20);
+    }
+
     .maplibregl-popup-content {
       background: rgba(255, 252, 244, .96);
       color: var(--text);
@@ -323,6 +345,7 @@
     <div class="subtitle">
       Semi-annual check-ins from 2020 to 2026. Line width shows segment-level service; the system total counts each route only once.
     </div>
+    <div id="statusMessage" class="status-message">Loading rail data…</div>
 
     <div class="legend">
       <div class="legend-row"><span class="swatch" style="background:#005f3b"></span>Capitol Corridor</div>
@@ -372,8 +395,11 @@
   </div>
 
   <script>
-    const RAIL_DATA_URL = "data/passenger_rail_timeline.geojson";
-    const CA_BOUNDARY_URL = "data/ca_state.geojson";
+    // Resolve data files relative to this HTML page. This works both locally
+    // and when the site is hosted in a GitHub Pages project subdirectory.
+    const APP_BASE_URL = new URL("./", window.location.href);
+    const RAIL_DATA_URL = new URL("./data/passenger_rail_timeline.geojson", APP_BASE_URL).href;
+    const CA_BOUNDARY_URL = new URL("./data/ca_state.geojson", APP_BASE_URL).href;
 
     const FIELD = {
       route: "route",
@@ -401,6 +427,7 @@
 
     const style = {
       version: 8,
+      glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
       sources: {
         base: {
           type: "raster",
@@ -457,6 +484,81 @@
     let currentDate = null;
     let railLayersAdded = false;
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+
+    map.on("error", event => {
+      console.error("MapLibre error:", event.error || event);
+    });
+
+    function setStatus(message, state = "") {
+      const element = document.getElementById("statusMessage");
+      element.textContent = message;
+      element.className = `status-message ${state}`.trim();
+    }
+
+    async function fetchJson(url, label) {
+      const response = await fetch(url, { cache: "no-store" });
+
+      if (!response.ok) {
+        throw new Error(`${label} could not be loaded (${response.status}). Check: ${url}`);
+      }
+
+      const text = await response.text();
+
+      try {
+        const data = JSON.parse(text);
+        if (!data || typeof data !== "object") {
+          throw new Error("The response did not contain a JSON object.");
+        }
+        return data;
+      } catch (error) {
+        throw new Error(
+          `${label} was found, but it is not valid JSON. ` +
+          `GitHub may have returned an HTML error page instead. Check: ${url}`
+        );
+      }
+    }
+
+    function waitForMapLoad() {
+      if (map.loaded()) return Promise.resolve();
+
+      return new Promise((resolve, reject) => {
+        map.once("load", resolve);
+        map.once("error", event => reject(event.error || new Error("The map failed to load.")));
+      });
+    }
+
+    function extendBoundsFromCoordinates(bounds, coordinates) {
+      if (!Array.isArray(coordinates)) return;
+
+      if (
+        coordinates.length >= 2 &&
+        typeof coordinates[0] === "number" &&
+        typeof coordinates[1] === "number"
+      ) {
+        bounds.extend([coordinates[0], coordinates[1]]);
+        return;
+      }
+
+      coordinates.forEach(item => extendBoundsFromCoordinates(bounds, item));
+    }
+
+    function fitMapToRailData(data) {
+      const bounds = new maplibregl.LngLatBounds();
+
+      data.features.forEach(feature => {
+        if (feature.geometry) {
+          extendBoundsFromCoordinates(bounds, feature.geometry.coordinates);
+        }
+      });
+
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, {
+          padding: { top: 45, right: 45, bottom: 45, left: 460 },
+          maxZoom: 7,
+          duration: 0
+        });
+      }
+    }
 
     function normalizeDate(value) {
       if (!value) return null;
@@ -524,9 +626,7 @@
 
     async function addCaliforniaMask() {
       try {
-        const res = await fetch(CA_BOUNDARY_URL + "?v=" + Date.now());
-        if (!res.ok) return;
-        const ca = await res.json();
+        const ca = await fetchJson(CA_BOUNDARY_URL, "California boundary GeoJSON");
         const mask = makeMaskFromCalifornia(ca);
 
         map.addSource("ca-boundary", { type: "geojson", data: ca });
@@ -546,7 +646,8 @@
           paint: { "line-color": "rgba(40,40,40,0.42)", "line-width": 1.2 }
         });
       } catch (err) {
-        console.warn("CA boundary not loaded.", err);
+        // The boundary is decorative, so the rail visualization can still load.
+        console.warn("California boundary not loaded:", err);
       }
     }
 
@@ -663,7 +764,7 @@
         layout: {
           "text-field": ["concat", ["to-string", ["get", FIELD.roundtrip]], " RT"],
           "text-size": 12,
-          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-font": ["Noto Sans Regular"],
           "text-anchor": "center",
           "text-offset": [0, -0.9],
           "text-allow-overlap": false,
@@ -789,12 +890,29 @@
     }
 
     async function init() {
-      const res = await fetch(RAIL_DATA_URL + "?v=" + Date.now());
-      if (!res.ok) throw new Error(`Could not load ${RAIL_DATA_URL}`);
-      allData = preprocessData(await res.json());
+      setStatus("Loading rail GeoJSON…");
+
+      const rawData = await fetchJson(RAIL_DATA_URL, "Passenger rail GeoJSON");
+
+      if (rawData.type !== "FeatureCollection" || !Array.isArray(rawData.features)) {
+        throw new Error("Passenger rail GeoJSON must be a FeatureCollection with a features array.");
+      }
+
+      allData = preprocessData(rawData);
+
+      if (!allData.features.length) {
+        throw new Error(
+          "The GeoJSON loaded, but no usable features remained after validation. " +
+          "Check the geometry and property names in the data file."
+        );
+      }
 
       dates = [...new Set(allData.features.map(f => f.properties[FIELD.date]))].sort();
-      if (!dates.length) throw new Error("GeoJSON loaded, but no valid date values were found.");
+      if (!dates.length) {
+        throw new Error(
+          `The GeoJSON loaded, but no valid "${FIELD.date}" values were found.`
+        );
+      }
 
       currentDate = dates[0];
 
@@ -816,19 +934,17 @@
 
       setupChartControls();
 
-      if (map.loaded()) {
-        await addCaliforniaMask();
-        addRailLayer();
-      } else {
-        map.on("load", async () => {
-          await addCaliforniaMask();
-          addRailLayer();
-        });
-      }
+      setStatus("Rail data loaded. Preparing map…");
+      await waitForMapLoad();
+      await addCaliforniaMask();
+      addRailLayer();
+      fitMapToRailData(allData);
+      setStatus("Loaded", "success");
     }
 
     init().catch(err => {
       console.error(err);
+      setStatus(err.message, "error");
       document.getElementById("dateLabel").textContent = "Data not loaded";
       document.getElementById("metricSegments").textContent = "—";
       document.getElementById("metricTotal").textContent = "—";
