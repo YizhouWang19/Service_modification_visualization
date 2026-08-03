@@ -1,4 +1,8 @@
-# California Passenger Rail Timeline — Updated
+# California Passenger Rail Timeline 
+Online Page: https://yizhouwang19.github.io/Service_modification_visualization/
+
+
+Run Localy:
 
 Files:
 - `index.html`
