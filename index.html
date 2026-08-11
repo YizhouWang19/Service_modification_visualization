@@ -395,11 +395,9 @@
   </div>
 
   <script>
-    // Resolve data files relative to this HTML page. This works both locally
-    // and when the site is hosted in a GitHub Pages project subdirectory.
+    // Resolve the rail data relative to this page so GitHub Pages project URLs work.
     const APP_BASE_URL = new URL("./", window.location.href);
     const RAIL_DATA_URL = new URL("./data/passenger_rail_timeline.geojson", APP_BASE_URL).href;
-    const CA_BOUNDARY_URL = new URL("./data/ca_state.geojson", APP_BASE_URL).href;
 
     const FIELD = {
       route: "route",
@@ -485,8 +483,11 @@
     let railLayersAdded = false;
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
 
+    // Basemap tiles and glyphs are optional. A failed external resource should not
+    // prevent the locally hosted rail GeoJSON from being added to the map.
     map.on("error", event => {
-      console.error("MapLibre error:", event.error || event);
+      const error = event.error || event;
+      console.warn("Non-fatal MapLibre resource error:", error);
     });
 
     function setStatus(message, state = "") {
@@ -495,35 +496,110 @@
       element.className = `status-message ${state}`.trim();
     }
 
-    async function fetchJson(url, label) {
-      const response = await fetch(url, { cache: "no-store" });
-
-      if (!response.ok) {
-        throw new Error(`${label} could not be loaded (${response.status}). Check: ${url}`);
-      }
-
-      const text = await response.text();
-
-      try {
-        const data = JSON.parse(text);
-        if (!data || typeof data !== "object") {
-          throw new Error("The response did not contain a JSON object.");
-        }
-        return data;
-      } catch (error) {
-        throw new Error(
-          `${label} was found, but it is not valid JSON. ` +
-          `GitHub may have returned an HTML error page instead. Check: ${url}`
-        );
-      }
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes) || bytes <= 0) return "unknown size";
+      if (bytes < 1024) return `${bytes} B`;
+      const kb = bytes / 1024;
+      if (kb < 1024) return `${kb.toFixed(1)} KB`;
+      return `${(kb / 1024).toFixed(2)} MB`;
     }
 
-    function waitForMapLoad() {
-      if (map.loaded()) return Promise.resolve();
+    function formatMs(ms) {
+      if (ms < 1000) return `${Math.round(ms)} ms`;
+      return `${(ms / 1000).toFixed(2)} s`;
+    }
 
-      return new Promise((resolve, reject) => {
-        map.once("load", resolve);
-        map.once("error", event => reject(event.error || new Error("The map failed to load.")));
+    async function fetchRailJson(url) {
+      const requestStart = performance.now();
+      console.info("Rail data request:", url);
+      setStatus(`Requesting rail GeoJSON… ${url}`);
+
+      let response;
+      try {
+        response = await fetch(url, { cache: "no-store" });
+      } catch (error) {
+        throw new Error(
+          `Rail GeoJSON request failed before an HTTP response was received. ` +
+          `URL: ${url}. ${error?.message || error}`
+        );
+      }
+
+      const responseMs = performance.now() - requestStart;
+      const headerBytes = Number(response.headers.get("content-length"));
+      const headerSize = Number.isFinite(headerBytes) && headerBytes > 0
+        ? formatBytes(headerBytes)
+        : "size not reported by server";
+
+      console.info(
+        `Rail data response: HTTP ${response.status} ${response.statusText}; ` +
+        `${headerSize}; headers in ${formatMs(responseMs)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Rail GeoJSON could not be loaded: HTTP ${response.status} ${response.statusText}. ` +
+          `URL: ${url}`
+        );
+      }
+
+      setStatus(`Rail GeoJSON responded (HTTP ${response.status}, ${headerSize}). Downloading body…`);
+
+      const bodyStart = performance.now();
+      const text = await response.text();
+      const bodyMs = performance.now() - bodyStart;
+      const actualBytes = new Blob([text]).size;
+
+      setStatus(`Downloaded ${formatBytes(actualBytes)} in ${formatMs(bodyMs)}. Parsing GeoJSON…`);
+      console.info(`Rail data downloaded: ${formatBytes(actualBytes)} in ${formatMs(bodyMs)}`);
+
+      const parseStart = performance.now();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (error) {
+        const preview = text.slice(0, 120).replace(/\s+/g, " ");
+        throw new Error(
+          `Rail GeoJSON downloaded (${formatBytes(actualBytes)}) but JSON parsing failed. ` +
+          `URL: ${url}. Response begins: ${JSON.stringify(preview)}`
+        );
+      }
+      const parseMs = performance.now() - parseStart;
+
+      if (!data || typeof data !== "object") {
+        throw new Error(`Rail GeoJSON parsed, but the response was not a JSON object. URL: ${url}`);
+      }
+
+      const featureCount = Array.isArray(data.features) ? data.features.length : 0;
+      const totalMs = performance.now() - requestStart;
+      console.info(
+        `Rail GeoJSON parsed: ${featureCount.toLocaleString()} features; ` +
+        `parse ${formatMs(parseMs)}; total ${formatMs(totalMs)}; URL: ${url}`
+      );
+      setStatus(
+        `Parsed ${featureCount.toLocaleString()} rail features from ${formatBytes(actualBytes)} ` +
+        `in ${formatMs(totalMs)}. Preparing map…`
+      );
+
+      return data;
+    }
+
+    // Only wait for the MapLibre style to be ready for addSource/addLayer. External
+    // raster tiles and glyph requests may fail without blocking the rail layers.
+    function waitForMapLoad() {
+      if (map.isStyleLoaded()) return Promise.resolve();
+
+      return new Promise(resolve => {
+        let resolved = false;
+        const finish = () => {
+          if (resolved) return;
+          resolved = true;
+          map.off("style.load", finish);
+          map.off("load", finish);
+          resolve();
+        };
+
+        map.once("style.load", finish);
+        map.once("load", finish);
       });
     }
 
@@ -586,6 +662,7 @@
     }
 
     function preprocessData(data) {
+      const before = data.features.length;
       data.features = data.features
         .filter(f => f && f.geometry && f.properties)
         .map(f => {
@@ -597,58 +674,12 @@
           return f;
         })
         .filter(f => f.properties[FIELD.date]);
+
+      console.info(
+        `Rail data validation: ${before.toLocaleString()} input features, ` +
+        `${data.features.length.toLocaleString()} usable features.`
+      );
       return data;
-    }
-
-    function makeMaskFromCalifornia(caGeojson) {
-      const world = [[[-180,-90],[180,-90],[180,90],[-180,90],[-180,-90]]];
-      let holes = [];
-
-      caGeojson.features.forEach(f => {
-        const geom = f.geometry;
-        if (!geom) return;
-        if (geom.type === "Polygon") {
-          holes.push(...geom.coordinates.map(ring => ring.slice().reverse()));
-        } else if (geom.type === "MultiPolygon") {
-          geom.coordinates.forEach(poly => holes.push(...poly.map(ring => ring.slice().reverse())));
-        }
-      });
-
-      return {
-        type: "FeatureCollection",
-        features: [{
-          type: "Feature",
-          properties: {},
-          geometry: { type: "Polygon", coordinates: world.concat(holes) }
-        }]
-      };
-    }
-
-    async function addCaliforniaMask() {
-      try {
-        const ca = await fetchJson(CA_BOUNDARY_URL, "California boundary GeoJSON");
-        const mask = makeMaskFromCalifornia(ca);
-
-        map.addSource("ca-boundary", { type: "geojson", data: ca });
-        map.addSource("outside-ca-mask", { type: "geojson", data: mask });
-
-        map.addLayer({
-          id: "outside-ca-mask",
-          type: "fill",
-          source: "outside-ca-mask",
-          paint: { "fill-color": "#f6f3ec", "fill-opacity": 0.62 }
-        });
-
-        map.addLayer({
-          id: "ca-boundary-line",
-          type: "line",
-          source: "ca-boundary",
-          paint: { "line-color": "rgba(40,40,40,0.42)", "line-width": 1.2 }
-        });
-      } catch (err) {
-        // The boundary is decorative, so the rail visualization can still load.
-        console.warn("California boundary not loaded:", err);
-      }
     }
 
     function getCoordsArray(geometry) {
@@ -809,6 +840,7 @@
 
       railLayersAdded = true;
       updateMetrics(initial);
+      console.info(`Rail layers added for ${formatDate(currentDate)} with ${initial.features.length} active segments.`);
     }
 
     function uniqueSorted(field) {
@@ -890,27 +922,29 @@
     }
 
     async function init() {
-      setStatus("Loading rail GeoJSON…");
+      setStatus(`Loading rail GeoJSON… ${RAIL_DATA_URL}`);
 
-      const rawData = await fetchJson(RAIL_DATA_URL, "Passenger rail GeoJSON");
+      const rawData = await fetchRailJson(RAIL_DATA_URL);
 
       if (rawData.type !== "FeatureCollection" || !Array.isArray(rawData.features)) {
-        throw new Error("Passenger rail GeoJSON must be a FeatureCollection with a features array.");
+        throw new Error(
+          `Rail GeoJSON loaded from ${RAIL_DATA_URL}, but it is not a FeatureCollection with a features array.`
+        );
       }
 
       allData = preprocessData(rawData);
 
       if (!allData.features.length) {
         throw new Error(
-          "The GeoJSON loaded, but no usable features remained after validation. " +
-          "Check the geometry and property names in the data file."
+          `Rail GeoJSON loaded from ${RAIL_DATA_URL}, but no usable features remained after validation. ` +
+          `Check geometry and the route/segment/date/roundtrip property names.`
         );
       }
 
       dates = [...new Set(allData.features.map(f => f.properties[FIELD.date]))].sort();
       if (!dates.length) {
         throw new Error(
-          `The GeoJSON loaded, but no valid "${FIELD.date}" values were found.`
+          `Rail GeoJSON loaded from ${RAIL_DATA_URL}, but no valid "${FIELD.date}" values were found.`
         );
       }
 
@@ -934,16 +968,20 @@
 
       setupChartControls();
 
-      setStatus("Rail data loaded. Preparing map…");
+      setStatus(
+        `Rail data ready: ${allData.features.length.toLocaleString()} usable features. ` +
+        `Waiting for MapLibre style…`
+      );
       await waitForMapLoad();
-      await addCaliforniaMask();
+
       addRailLayer();
       fitMapToRailData(allData);
       setStatus("Loaded", "success");
+      console.info("Rail visualization initialization complete.");
     }
 
     init().catch(err => {
-      console.error(err);
+      console.error("Rail visualization initialization failed:", err);
       setStatus(err.message, "error");
       document.getElementById("dateLabel").textContent = "Data not loaded";
       document.getElementById("metricSegments").textContent = "—";
