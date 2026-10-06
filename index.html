@@ -2,27 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>California Passenger Rail Daily Weekday Round Trips</title>
+  <title>California Passenger Rail &amp; Thruway Service Timeline</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
-
   <style>
     :root {
-      --panel-w: 410px;
+      --panel-w: 420px;
       --bg: #f6f3ec;
-      --panel: rgba(255, 252, 244, 0.92);
+      --panel: rgba(255, 252, 244, .94);
       --text: #151515;
       --muted: #6b665c;
-      --line: rgba(0, 0, 0, 0.14);
-      --green: #005f3b;
-      --blue: #003f88;
-      --gold: #f0b323;
+      --line: rgba(0, 0, 0, .14);
+      --capitol: #005f3b;
+      --surfliner: #003f88;
+      --gold: #c88a00;
+      --bus: #b54e17;
+      --station: #563ab7;
     }
 
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       background: var(--bg);
@@ -30,12 +29,7 @@
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       overflow: hidden;
     }
-
-    #map {
-      position: absolute;
-      inset: 0;
-    }
-
+    #map { position: absolute; inset: 0; }
     .panel {
       position: absolute;
       top: 24px;
@@ -43,419 +37,264 @@
       bottom: 24px;
       z-index: 10;
       width: var(--panel-w);
-      padding: 24px;
+      padding: 22px;
       border: 1px solid var(--line);
       border-radius: 26px;
       background: var(--panel);
       backdrop-filter: blur(16px);
-      box-shadow: 0 24px 70px rgba(0,0,0,.16);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .16);
       overflow: auto;
     }
-
     .eyebrow {
-      margin-bottom: 10px;
+      margin-bottom: 9px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       letter-spacing: .16em;
       text-transform: uppercase;
     }
-
     h1 {
       margin: 0;
-      font-size: 30px;
-      line-height: 1.04;
+      font-size: 28px;
+      line-height: 1.05;
       letter-spacing: -.045em;
       font-weight: 780;
     }
-
     .subtitle {
-      margin-top: 12px;
+      margin-top: 11px;
       color: var(--muted);
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1.48;
     }
-
-    .legend {
-      display: grid;
-      gap: 9px;
-      margin-top: 18px;
-      padding-top: 16px;
-      border-top: 1px solid var(--line);
-    }
-
-    .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #27231c;
-      font-size: 13px;
-    }
-
-    .swatch {
-      width: 34px;
-      height: 5px;
-      border-radius: 999px;
-    }
-
-    .metrics {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    .metric {
-      padding: 11px;
-      border-radius: 15px;
-      background: rgba(0,0,0,.045);
-      border: 1px solid rgba(0,0,0,.06);
-    }
-
-    .metric-value {
-      font-size: 22px;
-      font-weight: 780;
-      letter-spacing: -.04em;
-    }
-
-    .metric-label {
-      margin-top: 2px;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.2;
-    }
-
-    .section-title {
-      margin-top: 22px;
-      margin-bottom: 9px;
+    .status-message {
+      margin-top: 12px;
+      padding: 9px 11px;
+      border: 1px solid rgba(0, 0, 0, .09);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .64);
       color: var(--muted);
       font-size: 12px;
+      line-height: 1.4;
+    }
+    .status-message.success { display: none; }
+    .status-message.info { color: #654707; background: rgba(213, 168, 60, .12); }
+    .status-message.error { color: #8b1e1e; background: rgba(180, 35, 35, .08); border-color: rgba(180, 35, 35, .20); }
+    .legend {
+      display: grid;
+      gap: 8px;
+      margin-top: 17px;
+      padding-top: 15px;
+      border-top: 1px solid var(--line);
+    }
+    .legend-row { display: flex; align-items: center; gap: 9px; color: #27231c; font-size: 12px; }
+    .swatch { width: 31px; height: 5px; border-radius: 999px; flex: 0 0 auto; }
+    .swatch.bus { height: 0; border-top: 4px dashed var(--bus); border-radius: 0; }
+    .swatch.dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px currentColor; }
+    .metrics { display: grid; grid-template-columns: 1fr 1.28fr; gap: 10px; margin-top: 16px; }
+    .metric { padding: 11px; border: 1px solid rgba(0, 0, 0, .06); border-radius: 15px; background: rgba(0, 0, 0, .045); }
+    .metric-value { font-size: 22px; font-weight: 780; letter-spacing: -.04em; }
+    .metric-label { margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 1.2; }
+    details.control-section { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
+    details.control-section summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      list-style: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
       letter-spacing: .12em;
       text-transform: uppercase;
+      user-select: none;
     }
-
-    #dateLabel {
-      font-size: 28px;
-      font-weight: 780;
-      letter-spacing: -.045em;
-    }
-
+    details.control-section summary::-webkit-details-marker { display: none; }
+    details.control-section summary::after { content: "+"; font-size: 17px; font-weight: 400; line-height: 1; }
+    details.control-section[open] summary::after { content: "–"; }
+    .control-body { padding-top: 11px; }
+    #dateLabel { font-size: 25px; font-weight: 780; letter-spacing: -.045em; }
     input[type="range"] {
       width: 100%;
       appearance: none;
       height: 5px;
+      margin-top: 13px;
       border-radius: 999px;
       background: linear-gradient(90deg, #151515, #9a948a);
       outline: none;
     }
-
     input[type="range"]::-webkit-slider-thumb {
       appearance: none;
       width: 21px;
       height: 21px;
-      border-radius: 50%;
       border: 2px solid #fff;
+      border-radius: 50%;
       background: #111;
-      box-shadow: 0 0 0 5px rgba(0,0,0,.12);
+      box-shadow: 0 0 0 5px rgba(0, 0, 0, .12);
       cursor: pointer;
     }
-
     input[type="range"]::-moz-range-thumb {
       width: 21px;
       height: 21px;
-      border-radius: 50%;
       border: 2px solid #fff;
+      border-radius: 50%;
       background: #111;
-      box-shadow: 0 0 0 5px rgba(0,0,0,.12);
+      box-shadow: 0 0 0 5px rgba(0, 0, 0, .12);
       cursor: pointer;
     }
-
-    .ticks {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 11px;
+    .ticks { display: flex; justify-content: space-between; margin-top: 8px; color: var(--muted); font-size: 11px; }
+    .field-label { display: block; margin: 11px 0 6px; color: var(--muted); font-size: 11px; font-weight: 650; }
+    select, button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .76);
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
     }
-
+    select { padding: 10px 11px; outline: none; }
+    button { padding: 9px 11px; cursor: pointer; font-weight: 650; }
+    button:hover { background: #fff; }
     .toggle-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 12px 0;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      margin-top: 16px;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, .09);
       font-size: 13px;
       color: #2b261f;
     }
-
-    .switch {
-      position: relative;
-      width: 44px;
-      height: 24px;
-      display: inline-block;
-      flex: 0 0 auto;
-    }
-
+    .toggle-row:first-child { border-top: 1px solid rgba(0, 0, 0, .09); }
+    .switch { position: relative; width: 42px; height: 23px; display: inline-block; flex: 0 0 auto; }
     .switch input { display: none; }
-
-    .slider-round {
-      position: absolute;
-      cursor: pointer;
-      inset: 0;
-      background: #c9c2b8;
-      border-radius: 999px;
-      transition: .2s;
-    }
-
-    .slider-round:before {
-      content: "";
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      left: 3px;
-      top: 3px;
-      border-radius: 50%;
-      background: white;
-      transition: .2s;
-      box-shadow: 0 1px 4px rgba(0,0,0,.25);
-    }
-
+    .slider-round { position: absolute; cursor: pointer; inset: 0; background: #c9c2b8; border-radius: 999px; transition: .2s; }
+    .slider-round:before { content: ""; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; border-radius: 50%; background: white; transition: .2s; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }
     .switch input:checked + .slider-round { background: #151515; }
-    .switch input:checked + .slider-round:before { transform: translateX(20px); }
-
-    select {
-      width: 100%;
-      padding: 10px 11px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: rgba(255,255,255,.72);
-      color: var(--text);
-      font: inherit;
-      font-size: 13px;
-      outline: none;
-    }
-
-    #chart {
-      width: 100%;
-      height: 150px;
-      margin-top: 10px;
-      border-radius: 16px;
-      background: rgba(0,0,0,.035);
-      border: 1px solid rgba(0,0,0,.06);
-    }
-
-    .chart-note {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-      margin-top: 8px;
-    }
-
-    .status-message {
-      margin-top: 12px;
-      padding: 10px 12px;
-      border: 1px solid rgba(0,0,0,.09);
-      border-radius: 12px;
-      background: rgba(255,255,255,.62);
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.4;
-    }
-
-    .status-message.success {
-      display: none;
-    }
-
-    .status-message.error {
-      display: block;
-      color: #8b1e1e;
-      background: rgba(180, 35, 35, .08);
-      border-color: rgba(180, 35, 35, .20);
-    }
-
+    .switch input:checked + .slider-round:before { transform: translateX(19px); }
+    .availability-note, .chart-note { margin-top: 9px; color: var(--muted); font-size: 12px; line-height: 1.38; }
+    #chart { width: 100%; height: 150px; margin-top: 10px; border: 1px solid rgba(0, 0, 0, .06); border-radius: 16px; background: rgba(0, 0, 0, .035); }
     .maplibregl-popup-content {
-      background: rgba(255, 252, 244, .96);
-      color: var(--text);
-      border: 1px solid rgba(0,0,0,.16);
-      border-radius: 16px;
+      min-width: 190px;
+      max-width: 270px;
       padding: 12px 14px;
-      box-shadow: 0 18px 50px rgba(0,0,0,.22);
+      border: 1px solid rgba(0, 0, 0, .16);
+      border-radius: 16px;
+      background: rgba(255, 252, 244, .97);
+      color: var(--text);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
       backdrop-filter: blur(10px);
     }
-
-    .popup-title {
-      font-size: 14px;
-      font-weight: 760;
-      margin-bottom: 5px;
-    }
-
-    .popup-meta {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .popup-number {
-      margin-top: 8px;
-      font-size: 24px;
-      font-weight: 780;
-      letter-spacing: -.04em;
-    }
-
-    .popup-number span {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 500;
-      letter-spacing: 0;
-    }
-
-    .map-note {
-      position: absolute;
-      right: 28px;
-      bottom: 22px;
-      z-index: 9;
-      color: rgba(0,0,0,.45);
-      font-size: 11px;
-      pointer-events: none;
-      text-align: right;
-    }
-
+    .popup-kicker { margin-bottom: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
+    .popup-title { margin-bottom: 5px; font-size: 14px; font-weight: 760; }
+    .popup-meta { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .popup-number { margin-top: 8px; font-size: 24px; font-weight: 780; letter-spacing: -.04em; }
+    .popup-number span { color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+    .map-note { position: absolute; right: 28px; bottom: 22px; z-index: 9; color: rgba(0, 0, 0, .48); font-size: 11px; pointer-events: none; text-align: right; }
     @media (max-width: 780px) {
-      .panel {
-        width: calc(100vw - 32px);
-        left: 16px;
-        right: 16px;
-        top: 16px;
-        bottom: 16px;
-      }
+      .panel { width: calc(100vw - 32px); left: 16px; right: 16px; top: 16px; bottom: 16px; }
       h1 { font-size: 24px; }
       .map-note { display: none; }
     }
   </style>
 </head>
-
 <body>
   <div id="map"></div>
-
   <aside class="panel">
-    <div class="eyebrow">California Passenger Rail</div>
-    <h1>Daily weekday service timeline</h1>
-    <div class="subtitle">
-      Semi-annual check-ins from 2020 to 2026. Line width shows segment-level service; the system total counts each route only once.
-    </div>
-    <div id="statusMessage" class="status-message">Loading rail data…</div>
+    <div class="eyebrow">California passenger service</div>
+    <h1>Rail &amp; Thruway service timeline</h1>
+    <div class="subtitle">Semi-annual passenger-rail snapshots from 2020–2026, plus Amtrak Thruway bus data for Aug. 2026. Service totals count each route once.</div>
+    <div id="statusMessage" class="status-message">Loading service and station data…</div>
 
-    <div class="legend">
-      <div class="legend-row"><span class="swatch" style="background:#005f3b"></span>Capitol Corridor</div>
-      <div class="legend-row"><span class="swatch" style="background:#f0b323"></span>Gold Runner</div>
-      <div class="legend-row"><span class="swatch" style="background:#003f88"></span>Pacific Surfliner</div>
+    <div class="legend" aria-label="Map legend">
+      <div class="legend-row"><span class="swatch" style="background:var(--capitol)"></span>Capitol Corridor rail</div>
+      <div class="legend-row"><span class="swatch" style="background:var(--gold)"></span>Gold Runner rail</div>
+      <div class="legend-row"><span class="swatch" style="background:var(--surfliner)"></span>Pacific Surfliner rail</div>
+      <div class="legend-row"><span class="swatch bus"></span>Amtrak Thruway bus</div>
+      <div class="legend-row"><span class="swatch dot" style="color:var(--station);background:var(--station)"></span>Intercity rail station</div>
+      <div class="legend-row"><span class="swatch dot" style="color:var(--bus);background:var(--bus)"></span>Thruway stop</div>
     </div>
 
     <div class="metrics">
-      <div class="metric">
-        <div class="metric-value" id="metricSegments">—</div>
-        <div class="metric-label">active segments</div>
+      <div class="metric"><div class="metric-value" id="metricSegments">—</div><div class="metric-label">active map segments</div></div>
+      <div class="metric"><div class="metric-value" id="metricTotal">—</div><div class="metric-label" id="metricTotalLabel">system route total</div></div>
+    </div>
+
+    <details class="control-section" open>
+      <summary>Time &amp; service measure</summary>
+      <div class="control-body">
+        <div id="dateLabel">Loading…</div>
+        <input id="timeSlider" type="range" min="0" max="0" step="1" value="0" aria-label="Timeline date" />
+        <div class="ticks" id="ticks"><span>Start</span><span>End</span></div>
+        <label class="field-label" for="measureSelect">Display service as</label>
+        <select id="measureSelect">
+          <option value="weekday_roundtrip">Weekday round trips</option>
+          <option value="weekend_roundtrip">Weekend round trips</option>
+          <option value="weekday_northbound">Weekday northbound trips</option>
+          <option value="weekday_southbound">Weekday southbound trips</option>
+          <option value="weekend_northbound">Weekend northbound trips</option>
+          <option value="weekend_southbound">Weekend southbound trips</option>
+        </select>
+        <div class="availability-note" id="availabilityNote"></div>
       </div>
-      <div class="metric">
-        <div class="metric-value" id="metricTotal">—</div>
-        <div class="metric-label">system route-total RT</div>
+    </details>
+
+    <details class="control-section" open>
+      <summary>Map layers</summary>
+      <div class="control-body">
+        <div class="toggle-row"><span>Passenger rail lines</span><label class="switch"><input id="railToggle" type="checkbox" checked /><span class="slider-round"></span></label></div>
+        <div class="toggle-row"><span>Amtrak Thruway bus lines</span><label class="switch"><input id="busToggle" type="checkbox" checked /><span class="slider-round"></span></label></div>
+        <div class="toggle-row"><span>Intercity rail stations</span><label class="switch"><input id="railStationToggle" type="checkbox" checked /><span class="slider-round"></span></label></div>
+        <div class="toggle-row"><span>Thruway bus stops</span><label class="switch"><input id="busStopToggle" type="checkbox" checked /><span class="slider-round"></span></label></div>
+        <div class="toggle-row"><span>Service labels</span><label class="switch"><input id="labelToggle" type="checkbox" /><span class="slider-round"></span></label></div>
+        <div style="height:10px"></div>
+        <button id="fitButton" type="button">Fit visible service</button>
       </div>
-    </div>
+    </details>
 
-    <div class="section-title">Time</div>
-    <div id="dateLabel">Loading…</div>
-    <input id="timeSlider" type="range" min="0" max="0" step="1" value="0" />
-    <div class="ticks" id="ticks"><span>Start</span><span>End</span></div>
-
-    <div class="toggle-row">
-      <span>Show RT labels on the map</span>
-      <label class="switch">
-        <input id="labelToggle" type="checkbox" />
-        <span class="slider-round"></span>
-      </label>
-    </div>
-
-    <div class="section-title">Trend chart</div>
-    <select id="chartMode">
-      <option value="segment">Segment</option>
-      <option value="route">Route</option>
-    </select>
-    <div style="height:8px"></div>
-    <select id="chartSelect"></select>
-    <svg id="chart" viewBox="0 0 390 150" preserveAspectRatio="none"></svg>
-    <div class="chart-note" id="chartNote">
-      Select a segment or route to compare daily weekday round trips over time.
-    </div>
+    <details class="control-section" open>
+      <summary>Trend chart</summary>
+      <div class="control-body">
+        <label class="field-label" for="chartMode">Compare</label>
+        <select id="chartMode"><option value="segment">A segment</option><option value="route">A route total</option></select>
+        <label class="field-label" for="chartSelect">Selection</label>
+        <select id="chartSelect"></select>
+        <svg id="chart" viewBox="0 0 390 150" preserveAspectRatio="none" aria-label="Service trend chart"></svg>
+        <div class="chart-note" id="chartNote">Select a segment or route to compare service over time.</div>
+      </div>
+    </details>
   </aside>
-
-  <div class="map-note">
-    MapLibre GL JS · Segment widths and route totals are stored in the GeoJSON
-  </div>
+  <div class="map-note">MapLibre GL JS · Bus schedules currently entered only for Aug. 2026</div>
 
   <script>
-    // Resolve the rail data relative to this page so GitHub Pages project URLs work.
     const APP_BASE_URL = new URL("./", window.location.href);
-    const RAIL_DATA_URL = new URL("./data/passenger_rail_timeline.geojson", APP_BASE_URL).href;
-
-    const FIELD = {
-      route: "route",
-      segment: "segment",
-      date: "date",
-      roundtrip: "roundtrip",
-      routeTotal: "route_total_rt"
+    const DATA_URLS = {
+      service: new URL("./data/passenger_rail_timeline.geojson", APP_BASE_URL).href,
+      railStations: new URL("./data/rail_stations.geojson", APP_BASE_URL).href,
+      busStops: new URL("./data/thruway_bus_stops.geojson", APP_BASE_URL).href
     };
-
-    const colors = {
-      "Capitol Corridor": "#005f3b",
-      "Pacific Surfliner": "#003f88",
-      "Gold Runner": "#f0b323",
-      "San Joaquins": "#f0b323"
+    const FIELD = { route: "route", segment: "segment", date: "date", mode: "mode", serviceKey: "service_key" };
+    const MEASURES = {
+      weekday_roundtrip: { label: "weekday round trips", compact: "weekday RT", segment: "weekday_roundtrip", route: "route_total_weekday_roundtrip", rail: true },
+      weekend_roundtrip: { label: "weekend round trips", compact: "weekend RT", segment: "weekend_roundtrip", route: "route_total_weekend_roundtrip", rail: false },
+      weekday_northbound: { label: "weekday northbound trips", compact: "weekday NB", segment: "weekday_northbound", route: "route_total_weekday_northbound", rail: false },
+      weekday_southbound: { label: "weekday southbound trips", compact: "weekday SB", segment: "weekday_southbound", route: "route_total_weekday_southbound", rail: false },
+      weekend_northbound: { label: "weekend northbound trips", compact: "weekend NB", segment: "weekend_northbound", route: "route_total_weekend_northbound", rail: false },
+      weekend_southbound: { label: "weekend southbound trips", compact: "weekend SB", segment: "weekend_southbound", route: "route_total_weekend_southbound", rail: false }
     };
-
-    const routeColorExpression = [
-      "match", ["get", FIELD.route],
-      "Capitol Corridor", colors["Capitol Corridor"],
-      "Pacific Surfliner", colors["Pacific Surfliner"],
-      "Gold Runner", colors["Gold Runner"],
-      "San Joaquins", colors["Gold Runner"],
-      "#7b7b7b"
-    ];
-
-    const style = {
-      version: 8,
-      glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-      sources: {
-        base: {
-          type: "raster",
-          tiles: [
-            "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-            "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-            "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
-          ],
-          tileSize: 256,
-          attribution: "© OpenStreetMap contributors © CARTO"
-        },
-        labels: {
-          type: "raster",
-          tiles: [
-            "https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
-            "https://b.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
-            "https://c.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png"
-          ],
-          tileSize: 256
-        }
-      },
-      layers: [
-        { id: "base", type: "raster", source: "base", paint: { "raster-opacity": 0.55, "raster-saturation": -0.9 } },
-        { id: "labels", type: "raster", source: "labels", paint: { "raster-opacity": 0.42 } }
-      ]
-    };
+    const COLORS = { "Capitol Corridor": "#005f3b", "Pacific Surfliner": "#003f88", "Gold Runner": "#c88a00", "San Joaquins": "#c88a00", bus: "#b54e17" };
+    const RAIL_COLOR = ["match", ["get", FIELD.route], "Capitol Corridor", COLORS["Capitol Corridor"], "Pacific Surfliner", COLORS["Pacific Surfliner"], "Gold Runner", COLORS["Gold Runner"], "San Joaquins", COLORS["Gold Runner"], "#737373"];
 
     const map = new maplibregl.Map({
       container: "map",
-      style,
+      style: {
+        version: 8,
+        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+        sources: {
+          base: { type: "raster", tiles: ["https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png", "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png", "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors © CARTO" },
+          labels: { type: "raster", tiles: ["https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png", "https://b.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png", "https://c.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png"], tileSize: 256 }
+        },
+        layers: [{ id: "base", type: "raster", source: "base", paint: { "raster-opacity": .55, "raster-saturation": -.9 } }, { id: "labels", type: "raster", source: "labels", paint: { "raster-opacity": .42 } }]
+      },
       center: [-119.45, 37.15],
       zoom: 5.15,
       pitch: 0,
@@ -465,528 +304,227 @@
       doubleClickZoom: true,
       touchZoomRotate: true,
       keyboard: true,
-      boxZoom: true,
-      interactive: true
+      boxZoom: true
     });
-
-    map.dragPan.enable();
-    map.scrollZoom.enable();
-    map.doubleClickZoom.enable();
-    map.touchZoomRotate.enable();
-    map.keyboard.enable();
-
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), "bottom-right");
+    map.on("error", event => console.warn("Non-fatal MapLibre resource error:", event.error || event));
 
-    let allData = null;
-    let dates = [];
-    let currentDate = null;
-    let railLayersAdded = false;
-    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+    let allData, railStations, busStops, dates = [], currentDate, layersAdded = false;
+    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "280px" });
 
-    // Basemap tiles and glyphs are optional. A failed external resource should not
-    // prevent the locally hosted rail GeoJSON from being added to the map.
-    map.on("error", event => {
-      const error = event.error || event;
-      console.warn("Non-fatal MapLibre resource error:", error);
-    });
-
-    function setStatus(message, state = "") {
-      const element = document.getElementById("statusMessage");
-      element.textContent = message;
-      element.className = `status-message ${state}`.trim();
-    }
-
-    function formatBytes(bytes) {
-      if (!Number.isFinite(bytes) || bytes <= 0) return "unknown size";
-      if (bytes < 1024) return `${bytes} B`;
-      const kb = bytes / 1024;
-      if (kb < 1024) return `${kb.toFixed(1)} KB`;
-      return `${(kb / 1024).toFixed(2)} MB`;
-    }
-
-    function formatMs(ms) {
-      if (ms < 1000) return `${Math.round(ms)} ms`;
-      return `${(ms / 1000).toFixed(2)} s`;
-    }
-
-    async function fetchRailJson(url) {
-      const requestStart = performance.now();
-      console.info("Rail data request:", url);
-      setStatus(`Requesting rail GeoJSON… ${url}`);
-
-      let response;
-      try {
-        response = await fetch(url, { cache: "no-store" });
-      } catch (error) {
-        throw new Error(
-          `Rail GeoJSON request failed before an HTTP response was received. ` +
-          `URL: ${url}. ${error?.message || error}`
-        );
-      }
-
-      const responseMs = performance.now() - requestStart;
-      const headerBytes = Number(response.headers.get("content-length"));
-      const headerSize = Number.isFinite(headerBytes) && headerBytes > 0
-        ? formatBytes(headerBytes)
-        : "size not reported by server";
-
-      console.info(
-        `Rail data response: HTTP ${response.status} ${response.statusText}; ` +
-        `${headerSize}; headers in ${formatMs(responseMs)}`
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Rail GeoJSON could not be loaded: HTTP ${response.status} ${response.statusText}. ` +
-          `URL: ${url}`
-        );
-      }
-
-      setStatus(`Rail GeoJSON responded (HTTP ${response.status}, ${headerSize}). Downloading body…`);
-
-      const bodyStart = performance.now();
-      const text = await response.text();
-      const bodyMs = performance.now() - bodyStart;
-      const actualBytes = new Blob([text]).size;
-
-      setStatus(`Downloaded ${formatBytes(actualBytes)} in ${formatMs(bodyMs)}. Parsing GeoJSON…`);
-      console.info(`Rail data downloaded: ${formatBytes(actualBytes)} in ${formatMs(bodyMs)}`);
-
-      const parseStart = performance.now();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (error) {
-        const preview = text.slice(0, 120).replace(/\s+/g, " ");
-        throw new Error(
-          `Rail GeoJSON downloaded (${formatBytes(actualBytes)}) but JSON parsing failed. ` +
-          `URL: ${url}. Response begins: ${JSON.stringify(preview)}`
-        );
-      }
-      const parseMs = performance.now() - parseStart;
-
-      if (!data || typeof data !== "object") {
-        throw new Error(`Rail GeoJSON parsed, but the response was not a JSON object. URL: ${url}`);
-      }
-
-      const featureCount = Array.isArray(data.features) ? data.features.length : 0;
-      const totalMs = performance.now() - requestStart;
-      console.info(
-        `Rail GeoJSON parsed: ${featureCount.toLocaleString()} features; ` +
-        `parse ${formatMs(parseMs)}; total ${formatMs(totalMs)}; URL: ${url}`
-      );
-      setStatus(
-        `Parsed ${featureCount.toLocaleString()} rail features from ${formatBytes(actualBytes)} ` +
-        `in ${formatMs(totalMs)}. Preparing map…`
-      );
-
+    function emptyCollection() { return { type: "FeatureCollection", features: [] }; }
+    function formatNumber(value) { return Number(value).toLocaleString("en-US", { maximumFractionDigits: 1 }); }
+    function normalizeDate(value) { const match = String(value || "").match(/^\d{4}-\d{2}-\d{2}/); return match ? match[0] : null; }
+    function formatDate(dateString) { return new Date(`${dateString}T00:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" }); }
+    function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]); }
+    function setStatus(message, state = "") { const element = document.getElementById("statusMessage"); element.textContent = message; element.className = `status-message ${state}`.trim(); }
+    async function fetchJson(url, name) {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`${name} could not be loaded (HTTP ${response.status}).`);
+      const data = await response.json();
+      if (data?.type !== "FeatureCollection" || !Array.isArray(data.features)) throw new Error(`${name} is not a GeoJSON FeatureCollection.`);
       return data;
     }
-
-    // Only wait for the MapLibre style to be ready for addSource/addLayer. External
-    // raster tiles and glyph requests may fail without blocking the rail layers.
-    function waitForMapLoad() {
-      if (map.isStyleLoaded()) return Promise.resolve();
-
-      return new Promise(resolve => {
-        let resolved = false;
-        const finish = () => {
-          if (resolved) return;
-          resolved = true;
-          map.off("style.load", finish);
-          map.off("load", finish);
-          resolve();
-        };
-
-        map.once("style.load", finish);
-        map.once("load", finish);
-      });
-    }
-
-    function extendBoundsFromCoordinates(bounds, coordinates) {
-      if (!Array.isArray(coordinates)) return;
-
-      if (
-        coordinates.length >= 2 &&
-        typeof coordinates[0] === "number" &&
-        typeof coordinates[1] === "number"
-      ) {
-        bounds.extend([coordinates[0], coordinates[1]]);
-        return;
-      }
-
-      coordinates.forEach(item => extendBoundsFromCoordinates(bounds, item));
-    }
-
-    function fitMapToRailData(data) {
-      const bounds = new maplibregl.LngLatBounds();
-
-      data.features.forEach(feature => {
-        if (feature.geometry) {
-          extendBoundsFromCoordinates(bounds, feature.geometry.coordinates);
-        }
-      });
-
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, {
-          padding: { top: 45, right: 45, bottom: 45, left: 460 },
-          maxZoom: 7,
-          duration: 0
-        });
-      }
-    }
-
-    function normalizeDate(value) {
-      if (!value) return null;
-      if (typeof value === "string") {
-        const match = value.match(/^\d{4}-\d{2}-\d{2}/);
-        if (match) return match[0];
-        const d = new Date(value);
-        if (!isNaN(d)) return d.toISOString().slice(0, 10);
-      }
-      if (typeof value === "number") {
-        const d = new Date(value);
-        if (!isNaN(d)) return d.toISOString().slice(0, 10);
-      }
-      return String(value).slice(0, 10);
-    }
-
-    function formatDate(dateString) {
-      const d = new Date(dateString + "T00:00:00");
-      return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-    }
-
-    function cleanRoute(route) {
-      if (route === "San Joaquins") return "Gold Runner";
-      return route || "Unknown route";
-    }
+    function currentMeasure() { return MEASURES[document.getElementById("measureSelect").value]; }
+    function isRailEnabled() { return document.getElementById("railToggle").checked; }
+    function isBusEnabled() { return document.getElementById("busToggle").checked; }
+    function metricValue(properties) { const value = Number(properties[currentMeasure().segment]); return Number.isFinite(value) ? value : 0; }
+    function routeTotalValue(properties) { const value = Number(properties[currentMeasure().route]); return Number.isFinite(value) ? value : 0; }
+    function modeLabel(mode) { return mode === "thruway_bus" ? "Amtrak Thruway bus" : "Passenger rail"; }
+    function routeLabel(properties) { return `${modeLabel(properties[FIELD.mode])} · ${properties[FIELD.route]}`; }
 
     function preprocessData(data) {
-      const before = data.features.length;
-      data.features = data.features
-        .filter(f => f && f.geometry && f.properties)
-        .map(f => {
-          const p = f.properties;
-          p[FIELD.route] = cleanRoute(p[FIELD.route]);
-          p[FIELD.date] = normalizeDate(p[FIELD.date]);
-          p[FIELD.roundtrip] = Number(p[FIELD.roundtrip] ?? 0);
-          p[FIELD.routeTotal] = Number(p[FIELD.routeTotal] ?? 0);
-          return f;
-        })
-        .filter(f => f.properties[FIELD.date]);
-
-      console.info(
-        `Rail data validation: ${before.toLocaleString()} input features, ` +
-        `${data.features.length.toLocaleString()} usable features.`
-      );
+      data.features = data.features.filter(feature => feature?.geometry && feature?.properties).map(feature => {
+        const properties = feature.properties;
+        properties[FIELD.date] = normalizeDate(properties[FIELD.date]);
+        properties[FIELD.mode] = properties[FIELD.mode] || "passenger_rail";
+        properties[FIELD.serviceKey] = properties[FIELD.serviceKey] || `${properties[FIELD.mode]}:${properties[FIELD.route]}`;
+        if (properties[FIELD.mode] === "passenger_rail") {
+          properties.weekday_roundtrip = Number(properties.weekday_roundtrip ?? properties.roundtrip ?? 0);
+          properties.route_total_weekday_roundtrip = Number(properties.route_total_weekday_roundtrip ?? properties.route_total_rt ?? 0);
+        }
+        return feature;
+      }).filter(feature => feature.properties[FIELD.date]);
       return data;
     }
-
-    function getCoordsArray(geometry) {
-      if (!geometry) return [];
-      if (geometry.type === "LineString") return [geometry.coordinates];
-      if (geometry.type === "MultiLineString") return geometry.coordinates;
-      return [];
+    function filterCurrentService() {
+      const measure = currentMeasure();
+      return allData.features.filter(feature => {
+        const p = feature.properties;
+        if (p[FIELD.date] !== currentDate) return false;
+        if (p[FIELD.mode] === "passenger_rail" && (!isRailEnabled() || !measure.rail)) return false;
+        if (p[FIELD.mode] === "thruway_bus" && !isBusEnabled()) return false;
+        return metricValue(p) > 0;
+      });
     }
-
+    function splitByMode(features) {
+      return {
+        rail: { type: "FeatureCollection", features: features.filter(feature => feature.properties[FIELD.mode] === "passenger_rail") },
+        bus: { type: "FeatureCollection", features: features.filter(feature => feature.properties[FIELD.mode] === "thruway_bus") }
+      };
+    }
     function midpointOfLongestLine(geometry) {
-      const lines = getCoordsArray(geometry);
+      const lines = geometry?.type === "LineString" ? [geometry.coordinates] : geometry?.type === "MultiLineString" ? geometry.coordinates : [];
       if (!lines.length) return null;
-
-      let longest = lines[0];
-      for (const line of lines) {
-        if (line.length > longest.length) longest = line;
-      }
-
-      if (!longest.length) return null;
-      const mid = Math.floor(longest.length / 2);
-      return longest[mid];
+      const longest = lines.reduce((best, line) => line.length > best.length ? line : best, lines[0]);
+      return longest[Math.floor(longest.length / 2)] || null;
     }
-
-    function makeLabelData(lineData) {
-      return {
-        type: "FeatureCollection",
-        features: lineData.features.map(f => {
-          const coord = midpointOfLongestLine(f.geometry);
-          if (!coord) return null;
-          return {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: coord },
-            properties: { ...f.properties }
-          };
-        }).filter(Boolean)
-      };
+    function labelData(features) {
+      const measure = currentMeasure();
+      return { type: "FeatureCollection", features: features.map(feature => {
+        const coordinate = midpointOfLongestLine(feature.geometry);
+        if (!coordinate) return null;
+        return { type: "Feature", geometry: { type: "Point", coordinates: coordinate }, properties: { label: `${formatNumber(metricValue(feature.properties))} ${measure.compact}`, ...feature.properties } };
+      }).filter(Boolean) };
     }
-
-    function filteredData(dateString) {
-      return {
-        type: "FeatureCollection",
-        features: allData.features.filter(f =>
-          f.properties[FIELD.date] === dateString &&
-          Number(f.properties[FIELD.roundtrip]) > 0
-        )
-      };
+    function updateMetrics(features) {
+      const totals = new Map();
+      for (const feature of features) totals.set(feature.properties[FIELD.serviceKey], routeTotalValue(feature.properties));
+      document.getElementById("metricSegments").textContent = formatNumber(features.length);
+      document.getElementById("metricTotal").textContent = formatNumber([...totals.values()].reduce((sum, value) => sum + value, 0));
+      document.getElementById("metricTotalLabel").textContent = `system ${currentMeasure().compact} route total`;
     }
-
-    function routeTotalsForDate(dateString) {
-      const totalsByRoute = new Map();
-      allData.features
-        .filter(f => f.properties[FIELD.date] === dateString)
-        .forEach(f => {
-          const p = f.properties;
-          if (!totalsByRoute.has(p[FIELD.route])) {
-            totalsByRoute.set(p[FIELD.route], Number(p[FIELD.routeTotal] || 0));
-          }
-        });
-      return totalsByRoute;
+    function updateAvailabilityNote() {
+      const note = document.getElementById("availabilityNote"), measure = currentMeasure(), notes = [];
+      if (!measure.rail) notes.push("Directional and weekend values are currently entered for Thruway bus only; passenger rail is hidden for this measure.");
+      if (currentDate !== "2026-08-01" && isBusEnabled()) notes.push("Thruway bus service is currently entered only for Aug. 2026, so no bus lines appear at this date.");
+      if (currentDate === "2026-08-01" && measure.rail) notes.push("Aug. 2026 weekday RT combines 35 passenger-rail route totals with 86 Thruway route totals when both layers are on.");
+      note.textContent = notes.join(" ");
     }
-
-    function updateMetrics(data) {
-      const routeTotals = routeTotalsForDate(currentDate);
-      const total = [...routeTotals.values()].reduce((sum, value) => sum + value, 0);
-      document.getElementById("metricSegments").textContent = data.features.length;
-      document.getElementById("metricTotal").textContent = total;
+    function setLayerVisibility(id, visible) { if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none"); }
+    function updateStationVisibility() {
+      const railVisible = isRailEnabled() && currentMeasure().rail && document.getElementById("railStationToggle").checked;
+      const busVisible = isBusEnabled() && currentDate === "2026-08-01" && document.getElementById("busStopToggle").checked;
+      setLayerVisibility("rail-station-circles", railVisible);
+      setLayerVisibility("thruway-stop-circles", busVisible);
+      setLayerVisibility("service-labels", document.getElementById("labelToggle").checked);
     }
-
-    function updateDate(index) {
-      currentDate = dates[index];
-      const data = filteredData(currentDate);
-      const labelData = makeLabelData(data);
-
-      document.getElementById("dateLabel").textContent = formatDate(currentDate);
-
-      if (map.getSource("rail")) map.getSource("rail").setData(data);
-      if (map.getSource("rt-label-points")) map.getSource("rt-label-points").setData(labelData);
-
-      updateMetrics(data);
+    function updateMap() {
+      if (!layersAdded) return;
+      const visibleFeatures = filterCurrentService().map(feature => ({ ...feature, properties: { ...feature.properties, display_value: metricValue(feature.properties) } }));
+      const byMode = splitByMode(visibleFeatures);
+      map.getSource("rail-service").setData(byMode.rail);
+      map.getSource("bus-service").setData(byMode.bus);
+      map.getSource("service-labels").setData(labelData(visibleFeatures));
+      updateMetrics(visibleFeatures);
+      updateAvailabilityNote();
+      updateStationVisibility();
       drawChart();
     }
-
-    function addRailLayer() {
-      if (railLayersAdded) return;
-      const initial = filteredData(currentDate);
-      const initialLabels = makeLabelData(initial);
-
-      map.addSource("rail", { type: "geojson", data: initial });
-      map.addSource("rt-label-points", { type: "geojson", data: initialLabels });
-
-      map.addLayer({
-        id: "rail-lines",
-        type: "line",
-        source: "rail",
-        layout: { "line-join": "round", "line-cap": "round" },
-        paint: {
-          "line-color": routeColorExpression,
-          "line-opacity": 0.98,
-          "line-width": [
-            "interpolate", ["linear"], ["to-number", ["get", FIELD.roundtrip]],
-            1, 1.8,
-            5, 4.2,
-            10, 6.8,
-            15, 9.5
-          ]
-        }
-      });
-
-      map.addLayer({
-        id: "rt-labels",
-        type: "symbol",
-        source: "rt-label-points",
-        layout: {
-          "text-field": ["concat", ["to-string", ["get", FIELD.roundtrip]], " RT"],
-          "text-size": 12,
-          "text-font": ["Noto Sans Regular"],
-          "text-anchor": "center",
-          "text-offset": [0, -0.9],
-          "text-allow-overlap": false,
-          "text-ignore-placement": false,
-          "text-padding": 10,
-          "visibility": "none"
-        },
-        paint: {
-          "text-color": "#111111",
-          "text-halo-color": "#fffaf0",
-          "text-halo-width": 1.8
-        }
-      });
-
-      map.addLayer({
-        id: "rail-hit",
-        type: "line",
-        source: "rail",
-        layout: { "line-join": "round", "line-cap": "round" },
-        paint: { "line-color": "#ffffff", "line-opacity": 0, "line-width": 22 }
-      });
-
-      map.on("mousemove", "rail-hit", (e) => {
-        map.getCanvas().style.cursor = "pointer";
-        const f = e.features[0];
-        const p = f.properties;
-        popup
-          .setLngLat(e.lngLat)
-          .setHTML(`
-            <div class="popup-title">${p[FIELD.segment]}</div>
-            <div class="popup-meta">${p[FIELD.route]} · ${formatDate(p[FIELD.date])}</div>
-            <div class="popup-number">${p[FIELD.roundtrip]} <span>segment RT</span></div>
-            <div class="popup-meta">Route total: ${p[FIELD.routeTotal]} RT · ${p.review_status || "Unreviewed"}</div>
-          `)
-          .addTo(map);
-      });
-
-      map.on("mouseleave", "rail-hit", () => {
-        map.getCanvas().style.cursor = "";
-        popup.remove();
-      });
-
-      railLayersAdded = true;
-      updateMetrics(initial);
-      console.info(`Rail layers added for ${formatDate(currentDate)} with ${initial.features.length} active segments.`);
+    function popupForService(feature, lngLat) {
+      const p = feature.properties, measure = currentMeasure(), matchNote = p.frequency_note ? `<div class="popup-meta" style="margin-top:6px">${escapeHtml(p.frequency_note)}</div>` : "";
+      popup.setLngLat(lngLat).setHTML(`
+        <div class="popup-kicker">${escapeHtml(modeLabel(p[FIELD.mode]))}</div>
+        <div class="popup-title">${escapeHtml(p[FIELD.segment])}</div>
+        <div class="popup-meta">${escapeHtml(p[FIELD.route])} · ${formatDate(p[FIELD.date])}</div>
+        <div class="popup-number">${formatNumber(metricValue(p))} <span>${escapeHtml(measure.label)}</span></div>
+        <div class="popup-meta">Route total: ${formatNumber(routeTotalValue(p))} ${escapeHtml(measure.compact)}</div>
+        ${matchNote}
+      `).addTo(map);
     }
-
-    function uniqueSorted(field) {
-      return [...new Set(allData.features.map(f => f.properties[field]).filter(Boolean))].sort();
+    function addServiceInteraction(layerId) {
+      map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
+      map.on("click", layerId, event => popupForService(event.features[0], event.lngLat));
     }
-
-    function setupChartControls() {
-      const mode = document.getElementById("chartMode");
-      const select = document.getElementById("chartSelect");
-
-      function refreshOptions() {
-        const field = mode.value === "route" ? FIELD.route : FIELD.segment;
-        const values = uniqueSorted(field);
-        select.innerHTML = values.map(v => `<option value="${v}">${v}</option>`).join("");
-        drawChart();
-      }
-
-      mode.addEventListener("change", refreshOptions);
-      select.addEventListener("change", drawChart);
-      refreshOptions();
+    function addMapLayers() {
+      if (layersAdded) return;
+      map.addSource("rail-service", { type: "geojson", data: emptyCollection() });
+      map.addSource("bus-service", { type: "geojson", data: emptyCollection() });
+      map.addSource("service-labels", { type: "geojson", data: emptyCollection() });
+      map.addSource("rail-stations", { type: "geojson", data: railStations });
+      map.addSource("thruway-stops", { type: "geojson", data: busStops });
+      map.addLayer({ id: "rail-lines", type: "line", source: "rail-service", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": RAIL_COLOR, "line-opacity": .96, "line-width": ["interpolate", ["linear"], ["to-number", ["get", "display_value"]], 1, 1.8, 5, 4.1, 10, 6.8, 15, 9.4] } });
+      map.addLayer({ id: "bus-lines", type: "line", source: "bus-service", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": COLORS.bus, "line-opacity": .9, "line-width": ["interpolate", ["linear"], ["to-number", ["get", "display_value"]], 1, 1.6, 5, 3.6, 10, 5.5, 15, 7.5], "line-dasharray": [1.3, 1.05] } });
+      map.addLayer({ id: "rail-hit", type: "line", source: "rail-service", paint: { "line-color": "#ffffff", "line-opacity": 0, "line-width": 22 } });
+      map.addLayer({ id: "bus-hit", type: "line", source: "bus-service", paint: { "line-color": "#ffffff", "line-opacity": 0, "line-width": 22 } });
+      map.addLayer({ id: "rail-station-circles", type: "circle", source: "rail-stations", paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 3.5, 8, 6], "circle-color": "#563ab7", "circle-stroke-color": "#fffdf7", "circle-stroke-width": 1.5 } });
+      map.addLayer({ id: "thruway-stop-circles", type: "circle", source: "thruway-stops", minzoom: 4.8, paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 2.1, 8, 4.4], "circle-color": COLORS.bus, "circle-opacity": .84, "circle-stroke-color": "#fffdf7", "circle-stroke-width": .8 } });
+      map.addLayer({ id: "service-labels", type: "symbol", source: "service-labels", layout: { "text-field": ["get", "label"], "text-size": 11, "text-font": ["Noto Sans Regular"], "text-anchor": "center", "text-offset": [0, -0.9], "text-allow-overlap": false, "text-padding": 10, "visibility": "none" }, paint: { "text-color": "#111", "text-halo-color": "#fffaf0", "text-halo-width": 1.8 } });
+      addServiceInteraction("rail-hit");
+      addServiceInteraction("bus-hit");
+      map.on("mouseenter", "rail-station-circles", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "rail-station-circles", () => { map.getCanvas().style.cursor = ""; });
+      map.on("click", "rail-station-circles", event => {
+        const p = event.features[0].properties;
+        popup.setLngLat(event.lngLat).setHTML(`<div class="popup-kicker">Intercity rail station</div><div class="popup-title">${escapeHtml(p.station_name)}</div><div class="popup-meta">${escapeHtml(p.routes)}</div><div class="popup-meta" style="margin-top:6px">${escapeHtml(p.address)}</div>`).addTo(map);
+      });
+      map.on("mouseenter", "thruway-stop-circles", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "thruway-stop-circles", () => { map.getCanvas().style.cursor = ""; });
+      map.on("click", "thruway-stop-circles", event => {
+        const p = event.features[0].properties;
+        popup.setLngLat(event.lngLat).setHTML(`<div class="popup-kicker">Thruway bus stop</div><div class="popup-title">${escapeHtml(p.stop_name)}</div><div class="popup-meta">${escapeHtml(p.lines)}</div>`).addTo(map);
+      });
+      layersAdded = true;
     }
-
+    function extendBounds(bounds, coordinates) {
+      if (!Array.isArray(coordinates)) return;
+      if (coordinates.length >= 2 && typeof coordinates[0] === "number" && typeof coordinates[1] === "number") { bounds.extend([coordinates[0], coordinates[1]]); return; }
+      coordinates.forEach(coordinate => extendBounds(bounds, coordinate));
+    }
+    function fitToFeatures(features) {
+      if (!features.length) return;
+      const bounds = new maplibregl.LngLatBounds();
+      features.forEach(feature => extendBounds(bounds, feature.geometry?.coordinates));
+      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: { top: 44, right: 44, bottom: 44, left: 466 }, maxZoom: 7, duration: 650 });
+    }
+    function selectionKey(feature, mode) { const p = feature.properties; return mode === "route" ? p[FIELD.serviceKey] : `${p[FIELD.serviceKey]}|${p[FIELD.segment]}`; }
+    function selectionLabel(feature, mode) { const p = feature.properties; return mode === "route" ? routeLabel(p) : `${routeLabel(p)} · ${p[FIELD.segment]}`; }
+    function selectionFeature(mode, value) { return allData.features.find(feature => selectionKey(feature, mode) === value); }
+    function setupChartOptions() {
+      const mode = document.getElementById("chartMode").value, select = document.getElementById("chartSelect"), previous = select.value, seen = new Map();
+      allData.features.forEach(feature => { const key = selectionKey(feature, mode); if (!seen.has(key)) seen.set(key, selectionLabel(feature, mode)); });
+      const options = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+      select.innerHTML = options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("");
+      if (options.some(([value]) => value === previous)) select.value = previous;
+      drawChart();
+    }
     function seriesForSelection() {
-      const mode = document.getElementById("chartMode").value;
-      const value = document.getElementById("chartSelect").value;
-      const field = mode === "route" ? FIELD.route : FIELD.segment;
-
+      const mode = document.getElementById("chartMode").value, selected = document.getElementById("chartSelect").value;
       return dates.map(date => {
-        const feats = allData.features.filter(
-          f => f.properties[FIELD.date] === date && f.properties[field] === value
-        );
-
-        let rt = 0;
-        if (mode === "route") {
-          rt = feats.length ? Number(feats[0].properties[FIELD.routeTotal] || 0) : 0;
-        } else {
-          rt = feats.reduce(
-            (sum, f) => sum + Number(f.properties[FIELD.roundtrip] || 0),
-            0
-          );
-        }
-        return { date, rt };
+        const features = allData.features.filter(feature => feature.properties[FIELD.date] === date && selectionKey(feature, mode) === selected);
+        return { date, value: mode === "route" ? (features.length ? routeTotalValue(features[0].properties) : 0) : features.reduce((sum, feature) => sum + metricValue(feature.properties), 0) };
       });
     }
-
     function drawChart() {
-      if (!allData || !dates.length) return;
-      const svg = document.getElementById("chart");
-      const series = seriesForSelection();
-      const maxY = Math.max(1, ...series.map(d => d.rt));
-      const w = 390, h = 150;
-      const pad = { l: 30, r: 12, t: 18, b: 28 };
-      const x = i => pad.l + (i / Math.max(1, series.length - 1)) * (w - pad.l - pad.r);
-      const y = v => h - pad.b - (v / maxY) * (h - pad.t - pad.b);
-      const currentIdx = dates.indexOf(currentDate);
-
-      const points = series.map((d, i) => `${x(i)},${y(d.rt)}`).join(" ");
-      const circles = series.map((d, i) => {
-        const active = i === currentIdx;
-        return `<circle cx="${x(i)}" cy="${y(d.rt)}" r="${active ? 4.5 : 2.8}" fill="${active ? "#111" : "#777"}" />`;
-      }).join("");
-
-      svg.innerHTML = `
-        <line x1="${pad.l}" y1="${h-pad.b}" x2="${w-pad.r}" y2="${h-pad.b}" stroke="rgba(0,0,0,.18)" />
-        <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${h-pad.b}" stroke="rgba(0,0,0,.18)" />
-        <text x="${pad.l}" y="13" font-size="10" fill="#6b665c">${maxY} RT</text>
-        <text x="${pad.l}" y="${h-8}" font-size="10" fill="#6b665c">${formatDate(dates[0])}</text>
-        <text x="${w-pad.r-46}" y="${h-8}" font-size="10" fill="#6b665c">${formatDate(dates[dates.length-1])}</text>
-        <polyline points="${points}" fill="none" stroke="#111" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
-        ${circles}
-      `;
-
-      const value = document.getElementById("chartSelect").value;
-      const mode = document.getElementById("chartMode").value;
-      document.getElementById("chartNote").textContent =
-        mode === "route"
-          ? `${value}: route-total daily weekday round trips; overlapping segments are not added together.`
-          : `${value}: segment-level daily weekday round trips at each semi-annual check-in.`;
+      if (!allData || !dates.length || !document.getElementById("chartSelect").value) return;
+      const svg = document.getElementById("chart"), series = seriesForSelection(), maxY = Math.max(1, ...series.map(point => point.value)), w = 390, h = 150, pad = { l: 30, r: 12, t: 18, b: 28 };
+      const x = index => pad.l + (index / Math.max(1, series.length - 1)) * (w - pad.l - pad.r), y = value => h - pad.b - (value / maxY) * (h - pad.t - pad.b), activeIndex = dates.indexOf(currentDate);
+      const points = series.map((point, index) => `${x(index)},${y(point.value)}`).join(" ");
+      const circles = series.map((point, index) => `<circle cx="${x(index)}" cy="${y(point.value)}" r="${index === activeIndex ? 4.5 : 2.8}" fill="${index === activeIndex ? "#111" : "#777"}" />`).join("");
+      svg.innerHTML = `<line x1="${pad.l}" y1="${h-pad.b}" x2="${w-pad.r}" y2="${h-pad.b}" stroke="rgba(0,0,0,.18)" /><line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${h-pad.b}" stroke="rgba(0,0,0,.18)" /><text x="${pad.l}" y="13" font-size="10" fill="#6b665c">${formatNumber(maxY)} ${currentMeasure().compact}</text><text x="${pad.l}" y="${h-8}" font-size="10" fill="#6b665c">${formatDate(dates[0])}</text><text x="${w-pad.r-46}" y="${h-8}" font-size="10" fill="#6b665c">${formatDate(dates[dates.length - 1])}</text><polyline points="${points}" fill="none" stroke="#111" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />${circles}`;
+      const mode = document.getElementById("chartMode").value, selection = selectionFeature(mode, document.getElementById("chartSelect").value), isBus = selection?.properties?.[FIELD.mode] === "thruway_bus";
+      document.getElementById("chartNote").textContent = isBus ? `${selectionLabel(selection, mode)}: Thruway frequency is currently available only for Aug. 2026; zeroes elsewhere mean “not entered,” not no service.` : mode === "route" ? `${selectionLabel(selection, mode)}: route-level ${currentMeasure().label}; overlapping segments are not added.` : `${selectionLabel(selection, mode)}: segment-level ${currentMeasure().label}.`;
     }
-
-    async function init() {
-      setStatus(`Loading rail GeoJSON… ${RAIL_DATA_URL}`);
-
-      const rawData = await fetchRailJson(RAIL_DATA_URL);
-
-      if (rawData.type !== "FeatureCollection" || !Array.isArray(rawData.features)) {
-        throw new Error(
-          `Rail GeoJSON loaded from ${RAIL_DATA_URL}, but it is not a FeatureCollection with a features array.`
-        );
-      }
-
-      allData = preprocessData(rawData);
-
-      if (!allData.features.length) {
-        throw new Error(
-          `Rail GeoJSON loaded from ${RAIL_DATA_URL}, but no usable features remained after validation. ` +
-          `Check geometry and the route/segment/date/roundtrip property names.`
-        );
-      }
-
-      dates = [...new Set(allData.features.map(f => f.properties[FIELD.date]))].sort();
-      if (!dates.length) {
-        throw new Error(
-          `Rail GeoJSON loaded from ${RAIL_DATA_URL}, but no valid "${FIELD.date}" values were found.`
-        );
-      }
-
-      currentDate = dates[0];
-
+    function updateDate(index) { currentDate = dates[index]; document.getElementById("dateLabel").textContent = formatDate(currentDate); updateMap(); }
+    function bindControls() {
       const slider = document.getElementById("timeSlider");
-      slider.min = 0;
-      slider.max = dates.length - 1;
-      slider.value = 0;
-      slider.addEventListener("input", e => updateDate(Number(e.target.value)));
-
-      document.getElementById("dateLabel").textContent = formatDate(currentDate);
-      document.getElementById("ticks").innerHTML =
-        `<span>${formatDate(dates[0])}</span><span>${formatDate(dates[dates.length - 1])}</span>`;
-
-      document.getElementById("labelToggle").addEventListener("change", e => {
-        if (map.getLayer("rt-labels")) {
-          map.setLayoutProperty("rt-labels", "visibility", e.target.checked ? "visible" : "none");
-        }
-      });
-
-      setupChartControls();
-
-      setStatus(
-        `Rail data ready: ${allData.features.length.toLocaleString()} usable features. ` +
-        `Waiting for MapLibre style…`
-      );
-      await waitForMapLoad();
-
-      addRailLayer();
-      fitMapToRailData(allData);
-      setStatus("Loaded", "success");
-      console.info("Rail visualization initialization complete.");
+      slider.min = 0; slider.max = dates.length - 1; slider.value = dates.length - 1;
+      slider.addEventListener("input", event => updateDate(Number(event.target.value)));
+      document.getElementById("ticks").innerHTML = `<span>${formatDate(dates[0])}</span><span>${formatDate(dates[dates.length - 1])}</span>`;
+      document.getElementById("measureSelect").addEventListener("change", updateMap);
+      document.getElementById("chartMode").addEventListener("change", setupChartOptions);
+      document.getElementById("chartSelect").addEventListener("change", drawChart);
+      ["railToggle", "busToggle", "railStationToggle", "busStopToggle", "labelToggle"].forEach(id => document.getElementById(id).addEventListener("change", updateMap));
+      document.getElementById("fitButton").addEventListener("click", () => fitToFeatures(filterCurrentService()));
     }
-
-    init().catch(err => {
-      console.error("Rail visualization initialization failed:", err);
-      setStatus(err.message, "error");
+    function waitForMapLoad() { if (map.isStyleLoaded()) return Promise.resolve(); return new Promise(resolve => { map.once("load", resolve); map.once("style.load", resolve); }); }
+    async function init() {
+      setStatus("Loading service, Thruway stop, and intercity rail-station data…");
+      const [service, stationAnchors, stops] = await Promise.all([fetchJson(DATA_URLS.service, "Service GeoJSON"), fetchJson(DATA_URLS.railStations, "Intercity rail-station GeoJSON"), fetchJson(DATA_URLS.busStops, "Thruway bus-stop GeoJSON")]);
+      allData = preprocessData(service); railStations = stationAnchors; busStops = stops;
+      dates = [...new Set(allData.features.map(feature => feature.properties[FIELD.date]))].sort();
+      if (!dates.length) throw new Error("No valid service dates were found.");
+      currentDate = dates[dates.length - 1];
+      bindControls(); setupChartOptions(); await waitForMapLoad(); addMapLayers(); updateDate(dates.length - 1); fitToFeatures(filterCurrentService()); setStatus("Loaded", "success");
+    }
+    init().catch(error => {
+      console.error("Service visualization initialization failed:", error);
+      setStatus(error.message, "error");
       document.getElementById("dateLabel").textContent = "Data not loaded";
       document.getElementById("metricSegments").textContent = "—";
       document.getElementById("metricTotal").textContent = "—";
-      document.getElementById("chartNote").textContent = err.message;
+      document.getElementById("chartNote").textContent = error.message;
     });
   </script>
 </body>
