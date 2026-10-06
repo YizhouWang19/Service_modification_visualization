@@ -2,7 +2,7 @@
 
 Online page: <https://yizhouwang19.github.io/Service_modification_visualization/>
 
-This is a static MapLibre visualization of California passenger rail service from February 2020 through August 2026, with Amtrak Thruway bus service added for the August 2026 snapshot.
+This is a static MapLibre visualization of California passenger rail service from February 2020 through August 2026, with Amtrak Thruway bus service added for the August 2026 snapshot. Its basemap uses OpenFreeMap, so the deployed site does not need a CARTO/API key.
 
 ## Map data
 
