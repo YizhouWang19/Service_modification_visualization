@@ -286,15 +286,9 @@
 
     const map = new maplibregl.Map({
       container: "map",
-      style: {
-        version: 8,
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-        sources: {
-          base: { type: "raster", tiles: ["https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png", "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png", "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors © CARTO" },
-          labels: { type: "raster", tiles: ["https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png", "https://b.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png", "https://c.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png"], tileSize: 256 }
-        },
-        layers: [{ id: "base", type: "raster", source: "base", paint: { "raster-opacity": .55, "raster-saturation": -.9 } }, { id: "labels", type: "raster", source: "labels", paint: { "raster-opacity": .42 } }]
-      },
+      // The public OpenFreeMap style is intentionally key-free, so this GitHub
+      // Pages deployment needs no secret or client-side API token.
+      style: "https://tiles.openfreemap.org/styles/liberty",
       center: [-119.45, 37.15],
       zoom: 5.15,
       pitch: 0,
