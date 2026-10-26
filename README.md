@@ -28,3 +28,6 @@ Open <http://localhost:8000>.
 
 ## Thruway geometry update
 Bus map lines now use `data/thruway_routes.geojson`: 19 features from the uploaded WGS84 shapefile, with original coordinates and attributes preserved. Old bus segment geometry is no longer rendered. The existing frequency dataset remains the source for charts and totals; its segment frequencies are not assigned to the merged uploaded geometries. Bus map lines use a fixed width and route-name popups. Stops remain unchanged.
+
+## Segment frequency alignment
+`data/thruway_frequency_geometry.geojson` provides uploaded linework split by projected frequency boundaries, joined by route and segment. Existing frequency values, charts, totals, and rail data remain unchanged. Line widths, labels, and popups use the selected frequency measure. 30 of 35 frequency segments have uploaded geometry; Routes 18, 21 (two segments), 68, and incompatible Route 19 are excluded from the bus map but retained in charts/totals. Route 10b lacks a frequency record. See `data/thruway_alignment_report.json` for corridor coverage diagnostics. Boundary projection and nearest same-route corridor assignment are spatial estimates, not verified stop boundaries. Coordinates rounded to six decimals; original upload retained. Rebuild with `python scripts/align_thruway.py` (NumPy/SciPy).

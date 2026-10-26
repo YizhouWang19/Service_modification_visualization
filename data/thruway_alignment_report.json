@@ -1,0 +1,247 @@
+[
+  {
+    "route": "Route 1",
+    "segment": "Bakersfield \u2194 Los Angeles",
+    "matched_parts": 5,
+    "corridor_coverage_pct": 57.2,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 1",
+    "segment": "Los Angeles \u2194 San Diego",
+    "matched_parts": 2,
+    "corridor_coverage_pct": 4.1,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 1C",
+    "segment": "Bakersfield \u2194 Santa Monica",
+    "matched_parts": 12,
+    "corridor_coverage_pct": 72.6,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 3",
+    "segment": "Chico \u2194 Sacramento",
+    "matched_parts": 25,
+    "corridor_coverage_pct": 30.4,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 3",
+    "segment": "Roseville \u2194 Sacramento",
+    "matched_parts": 2,
+    "corridor_coverage_pct": 28.0,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 3",
+    "segment": "Davis \u2194 Sacramento",
+    "matched_parts": 23,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 3",
+    "segment": "Sacramento \u2194 Stockton",
+    "matched_parts": 10,
+    "corridor_coverage_pct": 70.8,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 3",
+    "segment": "Stockton(Cabral) \u2194 Stockton (San Joaquin St)",
+    "matched_parts": 3,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 5",
+    "segment": "Redding \u2194 Sacramento",
+    "matched_parts": 1,
+    "corridor_coverage_pct": 32.6,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 6",
+    "segment": "Stockton(Cabral) \u2194 Stockton (San Joaquin St)",
+    "matched_parts": 1,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 6",
+    "segment": "Stockton \u2194 San Jose",
+    "matched_parts": 17,
+    "corridor_coverage_pct": 68.1,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 6",
+    "segment": "San Jose \u2194 Santa Cruz",
+    "matched_parts": 7,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 7",
+    "segment": "Arcata \u2194 Santa Rosa",
+    "matched_parts": 2436,
+    "corridor_coverage_pct": 63.0,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 7",
+    "segment": "Santa Rosa \u2194 Martinez",
+    "matched_parts": 74,
+    "corridor_coverage_pct": 58.0,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 10",
+    "segment": "Las Vegas \u2194 UCSB Santa Barbara",
+    "matched_parts": 33,
+    "corridor_coverage_pct": 69.1,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 15",
+    "segment": "Yosemite \u2194 Mammoth Lakes",
+    "matched_parts": 22,
+    "corridor_coverage_pct": 88.0,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 15A",
+    "segment": "Yosemite \u2194 Merced",
+    "matched_parts": 9,
+    "corridor_coverage_pct": 98.9,
+    "status": "matched"
+  },
+  {
+    "route": "Route 15B",
+    "segment": "Yosemite \u2194 Fresno",
+    "matched_parts": 27,
+    "corridor_coverage_pct": 79.1,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 17",
+    "segment": "Oakland \u2194 San Luis Obispo",
+    "matched_parts": 40,
+    "corridor_coverage_pct": 36.7,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 17",
+    "segment": "San Luis Obispo \u2194 Santa Barbara",
+    "matched_parts": 12,
+    "corridor_coverage_pct": 69.4,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 18",
+    "segment": "Hanford \u2194 San Luis Obispo",
+    "matched_parts": 0,
+    "corridor_coverage_pct": 0,
+    "status": "no compatible uploaded route"
+  },
+  {
+    "route": "Route 19",
+    "segment": "Bakersfield \u2194 San Bernardino",
+    "matched_parts": 0,
+    "corridor_coverage_pct": 0,
+    "status": "no compatible uploaded route"
+  },
+  {
+    "route": "Route 20",
+    "segment": "Sparks \u2194 Reno",
+    "matched_parts": 2,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 20",
+    "segment": "Reno \u2194 Auburn",
+    "matched_parts": 20,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 20",
+    "segment": "Auburn \u2194 Roseville",
+    "matched_parts": 15,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 20",
+    "segment": "Roseville \u2194 Sacramento",
+    "matched_parts": 5,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 20C",
+    "segment": "Stateline \u2194 Sacramento",
+    "matched_parts": 15,
+    "corridor_coverage_pct": 97.0,
+    "status": "matched"
+  },
+  {
+    "route": "Route 21",
+    "segment": "Oakland \u2194 San Luis Obispo",
+    "matched_parts": 0,
+    "corridor_coverage_pct": 0,
+    "status": "no compatible uploaded route"
+  },
+  {
+    "route": "Route 21",
+    "segment": "San Luis Obispo \u2194 Santa Barbara",
+    "matched_parts": 0,
+    "corridor_coverage_pct": 0,
+    "status": "no compatible uploaded route"
+  },
+  {
+    "route": "Route 39",
+    "segment": "Fullerton \u2194 Palm Springs",
+    "matched_parts": 13,
+    "corridor_coverage_pct": 87.1,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 39",
+    "segment": "Palm Springs \u2194 Indio",
+    "matched_parts": 7,
+    "corridor_coverage_pct": 54.9,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 40",
+    "segment": "Merced \u2194 San Jose",
+    "matched_parts": 1,
+    "corridor_coverage_pct": 64.3,
+    "status": "partial match"
+  },
+  {
+    "route": "Route 68",
+    "segment": "Carmel \u2194 Salinas",
+    "matched_parts": 0,
+    "corridor_coverage_pct": 0,
+    "status": "no compatible uploaded route"
+  },
+  {
+    "route": "Route 99",
+    "segment": "Emeryville \u2194 San Francisco",
+    "matched_parts": 3,
+    "corridor_coverage_pct": 100.0,
+    "status": "matched"
+  },
+  {
+    "route": "POINT Southwest",
+    "segment": "Brookings \u2194 Klamath Falls",
+    "matched_parts": 16,
+    "corridor_coverage_pct": 43.2,
+    "status": "partial match"
+  }
+]
