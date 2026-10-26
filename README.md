@@ -25,3 +25,6 @@ python -m http.server 8000
 ```
 
 Open <http://localhost:8000>.
+
+## Thruway geometry update
+Bus map lines now use `data/thruway_routes.geojson`: 19 features from the uploaded WGS84 shapefile, with original coordinates and attributes preserved. Old bus segment geometry is no longer rendered. The existing frequency dataset remains the source for charts and totals; its segment frequencies are not assigned to the merged uploaded geometries. Bus map lines use a fixed width and route-name popups. Stops remain unchanged.
