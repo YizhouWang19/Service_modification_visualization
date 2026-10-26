@@ -174,6 +174,8 @@
     .availability-note, .chart-note { margin-top: 9px; color: var(--muted); font-size: 12px; line-height: 1.38; }
     #chart { width: 100%; height: 150px; margin-top: 10px; border: 1px solid rgba(0, 0, 0, .06); border-radius: 16px; background: rgba(0, 0, 0, .035); }
     .maplibregl-popup-content {
+      max-height: min(70vh, 520px);
+      overflow-y: auto;
       min-width: 190px;
       max-width: 270px;
       padding: 12px 42px 12px 14px;
@@ -421,26 +423,40 @@
       updateStationVisibility();
       drawChart();
     }
-    function popupForService(feature, lngLat) {
-      if (feature.properties.name && !feature.properties.mode) {
+    function popupForServices(features, lngLat) {
+      // MapLibre may return the same feature from adjacent tiles.
+      const unique = new Map();
+      for (const feature of features) {
         const p = feature.properties;
-        popup.setLngLat(lngLat).setHTML(`<div class="popup-title">${escapeHtml(p.route)}</div><div class="popup-meta">${escapeHtml(p.name)}</div><div class="popup-meta">Uploaded route geometry; segment frequency is not assigned to these lines.</div>`).addTo(map);
-        return;
+        const key = JSON.stringify([p[FIELD.mode], p[FIELD.route], p[FIELD.segment], p[FIELD.date]]);
+        if (!unique.has(key)) unique.set(key, feature);
       }
-      const p = feature.properties, measure = currentMeasure(), matchNote = p.frequency_note ? `<div class="popup-meta" style="margin-top:6px">${escapeHtml(p.frequency_note)}</div>` : "";
-      popup.setLngLat(lngLat).setHTML(`
-        <div class="popup-kicker">${escapeHtml(modeLabel(p[FIELD.mode]))}</div>
-        <div class="popup-title">${escapeHtml(p[FIELD.segment])}</div>
-        <div class="popup-meta">${escapeHtml(p[FIELD.route])} · ${formatDate(p[FIELD.date])}</div>
-        <div class="popup-number">${formatNumber(metricValue(p))} <span>${escapeHtml(measure.label)}</span></div>
-        <div class="popup-meta">Route total: ${formatNumber(routeTotalValue(p))} ${escapeHtml(measure.compact)}</div>
-        ${matchNote}
-      `).addTo(map);
+      const routes = [...unique.values()].sort((a, b) =>
+        String(a.properties[FIELD.route]).localeCompare(String(b.properties[FIELD.route]), undefined, { numeric: true }) ||
+        String(a.properties[FIELD.segment]).localeCompare(String(b.properties[FIELD.segment]))
+      );
+      if (!routes.length) return;
+      const measure = currentMeasure();
+      const heading = routes.length > 1
+        ? '<div class="popup-title">' + routes.length + ' overlapping service segments</div>'
+        : '';
+      const cards = routes.map((feature, index) => {
+        const p = feature.properties;
+        return `
+          <section style="${index ? 'border-top:1px solid rgba(0,0,0,.14);margin-top:12px;padding-top:12px' : ''}">
+            <div class="popup-kicker">${escapeHtml(modeLabel(p[FIELD.mode]))}</div>
+            <div class="popup-title">${escapeHtml(p[FIELD.route])}</div>
+            <div class="popup-meta">${escapeHtml(p[FIELD.segment])} · ${formatDate(p[FIELD.date])}</div>
+            <div class="popup-number">${formatNumber(metricValue(p))} <span>${escapeHtml(measure.label)}</span></div>
+            <div class="popup-meta">Route total: ${formatNumber(routeTotalValue(p))} ${escapeHtml(measure.compact)}</div>
+            ${p.frequency_note ? '<div class="popup-meta" style="margin-top:6px">' + escapeHtml(p.frequency_note) + '</div>' : ''}
+          </section>`;
+      }).join('');
+      popup.setLngLat(lngLat).setHTML(heading + cards).addTo(map);
     }
     function addServiceInteraction(layerId) {
       map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
-      map.on("click", layerId, event => popupForService(event.features[0], event.lngLat));
     }
     function addMapLayers() {
       if (layersAdded) return;
@@ -458,6 +474,15 @@
       map.addLayer({ id: "service-labels", type: "symbol", source: "service-labels", layout: { "text-field": ["get", "label"], "text-size": 11, "text-font": ["Noto Sans Regular"], "text-anchor": "center", "text-offset": [0, -0.9], "text-allow-overlap": false, "text-padding": 10, "visibility": "none" }, paint: { "text-color": "#111", "text-halo-color": "#fffaf0", "text-halo-width": 1.8 } });
       addServiceInteraction("rail-hit");
       addServiceInteraction("bus-hit");
+      // One handler gathers both modes, avoiding competing layer popups.
+      map.on("click", event => {
+        const layers = ["rail-hit", "bus-hit"].filter(id => map.getLayer(id));
+        const features = map.queryRenderedFeatures(event.point, { layers });
+        // Station and stop clicks keep their dedicated popups.
+        const pointLayers = ["rail-station-circles", "thruway-stop-circles"].filter(id => map.getLayer(id));
+        if (pointLayers.length && map.queryRenderedFeatures(event.point, { layers: pointLayers }).length) return;
+        if (features.length) popupForServices(features, event.lngLat);
+      });
       map.on("mouseenter", "rail-station-circles", () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", "rail-station-circles", () => { map.getCanvas().style.cursor = ""; });
       map.on("click", "rail-station-circles", event => {
