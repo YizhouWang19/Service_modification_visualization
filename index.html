@@ -449,7 +449,6 @@
             <div class="popup-meta">${escapeHtml(p[FIELD.segment])} · ${formatDate(p[FIELD.date])}</div>
             <div class="popup-number">${formatNumber(metricValue(p))} <span>${escapeHtml(measure.label)}</span></div>
             <div class="popup-meta">Route total: ${formatNumber(routeTotalValue(p))} ${escapeHtml(measure.compact)}</div>
-            ${p.frequency_note ? '<div class="popup-meta" style="margin-top:6px">' + escapeHtml(p.frequency_note) + '</div>' : ''}
           </section>`;
       }).join('');
       popup.setLngLat(lngLat).setHTML(heading + cards).addTo(map);
